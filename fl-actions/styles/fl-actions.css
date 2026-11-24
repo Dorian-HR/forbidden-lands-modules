@@ -1,0 +1,121 @@
+/* Forbidden Lands – Barre d'actions
+   Le style de la fiche du système : papier blanc, encre noire, IM Fell, cadre en chaîne, bandeau d'onglets sombre. */
+#fl-actions {
+  --fla-paper: #fff;
+  --fla-ink: #222020;
+  --fla-soft: #7a7470;
+  --fla-band: #3a3a3a;
+  --fla-accent: #a00404;
+  --fla-serif: "IM Fell DW Pica", "IM Fell Great Primer", Georgia, serif;
+  --fla-sc: "IM Fell DW Pica SC", "IM Fell DW Pica", Georgia, serif;
+  --fla-alt: "IM Fell Great Primer", "IM Fell DW Pica", Georgia, serif;
+  position: fixed;
+  z-index: 60;
+  transform: scale(var(--fla-scale, 1));
+  transform-origin: top left;
+  color: var(--fla-ink);
+  user-select: none;
+  pointer-events: none;
+}
+#fl-actions[hidden] { display: none; }
+#fl-actions > * { pointer-events: auto; }
+
+/* --- nom du token --- */
+.fla-head {
+  display: flex; align-items: center; gap: 4px;
+  font-family: var(--fla-sc); font-size: 15px; line-height: 1;
+  color: #fff; text-shadow: 0 0 3px #000, 0 0 6px #000;
+  padding: 0 0 3px 0;
+}
+.fla-grip { cursor: grab; opacity: 0.55; font-size: 11px; padding: 2px 3px; }
+.fla-grip:hover { opacity: 1; }
+.fla-grip:active { cursor: grabbing; }
+
+/* --- bandeau d'onglets (comme la fiche) --- */
+.fla-tabs {
+  display: flex; flex-wrap: nowrap; width: max-content;
+  background: var(--fla-band); border-radius: 2px; padding: 0 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+}
+.fla-group { position: relative; }
+.fla-tab {
+  all: unset; box-sizing: border-box; cursor: pointer; white-space: nowrap;
+  padding: 5px 9px 4px; font-family: var(--fla-alt); font-size: 14px; line-height: 1;
+  text-transform: uppercase; letter-spacing: 0.4px; color: #fff;
+}
+.fla-tab:hover { text-shadow: 0 0 8px var(--fla-accent); }
+.fla-group.open > .fla-tab { text-shadow: 0 0 6px var(--fla-accent), 0 0 10px var(--fla-accent); }
+
+/* --- panneau : papier blanc et cadre en chaîne --- */
+.fla-panel {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0;
+  background: var(--fla-paper);
+  border: 6px solid transparent;
+  border-image: url(/systems/forbidden-lands/assets/journal-art/small-border.webp) 100 / 10px repeat;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  padding: 4px 6px; gap: 4px 14px; width: max-content; max-width: 80vw; max-height: 70vh; overflow-y: auto;
+}
+.fla-group.open > .fla-panel { display: flex; flex-wrap: wrap; align-items: flex-start; }
+.fla-section { min-width: 150px; }
+.fla-section h4 {
+  margin: 2px 0 3px; padding: 0; border: none; text-align: center;
+  font-family: var(--fla-sc); font-weight: normal; font-size: 14px; letter-spacing: 0.6px; text-transform: uppercase; color: var(--fla-ink);
+}
+.fla-list { display: flex; flex-direction: column; }
+.fla-row { display: flex; align-items: center; }
+
+/* --- une ligne : libellé à gauche, valeur en petite case à droite --- */
+.fla-act {
+  all: unset; box-sizing: border-box; cursor: pointer; flex: 1; min-width: 140px;
+  display: flex; align-items: center; gap: 6px; padding: 4px 4px; border-radius: 2px;
+  font-family: var(--fla-serif); font-size: 15px; line-height: 1.15; color: var(--fla-ink);
+}
+.fla-act:hover { background: rgba(0, 0, 0, 0.06); text-shadow: 0 0 6px rgba(160, 4, 4, 0.35); }
+.fla-act:hover .fla-name { color: var(--fla-accent); }
+.fla-act img { width: 18px; height: 18px; border: none; object-fit: contain; flex: none; filter: drop-shadow(0 0 2px rgba(0,0,0,.5)); }
+.fla-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 340px; }
+.fla-bullet { flex: none; font-size: 11px; line-height: 1; color: var(--fla-ink); opacity: 0.85; }
+.fla-act:hover .fla-bullet { color: var(--fla-accent); }
+.fla-list { gap: 2px; }
+.fla-sub {
+  flex: none; min-width: 22px; padding: 0 4px; text-align: center;
+  border: 1px solid var(--fla-ink); border-radius: 3px;
+  font-family: "Author", var(--font-primary), sans-serif; font-size: 12px; line-height: 16px;
+}
+.fla-mini {
+  all: unset; cursor: pointer; padding: 0 3px; font-size: 11px; color: var(--fla-soft);
+}
+.fla-mini:hover { color: var(--fla-accent); }
+
+.fla-act.dim .fla-name { color: var(--fla-soft); }
+.fla-act.low .fla-sub { color: var(--fla-accent); border-color: var(--fla-accent); }
+.fla-act.broken .fla-name { text-decoration: line-through; color: var(--fla-soft); }
+.fla-act.active:not(.toggle) .fla-sub { background: var(--fla-ink); color: #fff; }
+
+/* états : petit rond comme sur la fiche, rempli quand actif */
+.fla-dot { flex: none; width: 13px; height: 13px; border: 1.5px solid var(--fla-ink); border-radius: 50%; box-sizing: border-box; }
+.fla-act.toggle.active .fla-dot { background: var(--fla-ink); }
+.fla-act.toggle.active .fla-name { color: var(--fla-accent); }
+
+/* message de chat : arme brisée */
+.fla-chat button { width: 100%; }
+.fla-chat-note { font-size: 11px; opacity: 0.7; font-style: italic; }
+
+/* voyage : l'activité donnée sur la feuille de Groupe */
+.fla-mine-tag { display: block; font-size: 10px; letter-spacing: 1px; color: var(--fla-accent); }
+.fla-section.mine .fla-act .fla-name { font-weight: normal; }
+
+/* actions lentes / rapides */
+.fla-speed { flex: none; font-family: var(--fla-serif); font-style: italic; font-size: 11px; color: var(--fla-soft); }
+.fla-speed.fast { color: #4a6a3a; }
+
+/* volonté en tête de l'onglet Sorts */
+.fla-top { flex-basis: 100%; text-align: center; font-family: var(--fla-sc); font-size: 13px; letter-spacing: 0.5px; border-bottom: 1px solid #d8d2c8; padding-bottom: 3px; }
+
+/* c'est son tour */
+#fl-actions.my-turn .fla-tabs { box-shadow: 0 0 0 1px var(--fla-accent), 0 0 12px rgba(160, 4, 4, 0.8); }
+.fla-turn { font-family: var(--fla-serif); font-style: italic; font-size: 13px; color: #ffd9c9; margin-left: 4px; }
+.fla-spent { color: #ffb3a0; }
+
+/* pont invisible entre l'onglet et son panneau : la souris ne « sort » pas en passant de l'un à l'autre */
+.fla-panel::before { content: ""; position: absolute; left: -6px; right: -6px; top: -12px; height: 12px; }

@@ -1,0 +1,196 @@
+<div class="flt-body season-{{st.season}} {{#if st.isLight}}is-light{{else}}is-dark{{/if}}">
+
+  {{!-- Date --}}
+  <header class="flt-date">
+    {{#if st.date.isFeast}}
+    <div class="flt-feast"><i class="fa-solid fa-star"></i> {{st.date.feast.name}} <i class="fa-solid fa-star"></i></div>
+    <div class="flt-feast-sub">{{st.date.feast.subtitle}} · jour de fête, hors semaine · ouvre {{st.date.month.name}}</div>
+    {{#if feastPart}}<div class="flt-feast-part" data-tooltip="La part de la fête (règle maison) : passer la fête dans une communauté qui la célèbre et y prendre part. Un seul bonus, 1d6 jours au plus, jet non poussable."><i class="fa-solid fa-gift"></i> {{feastPart}}</div>{{/if}}
+    {{else}}
+    <div class="flt-date-main">
+      <span class="flt-day">{{st.date.weekday}}{{#if st.date.isDeuil}} · jour des morts{{/if}}</span>
+      <span class="flt-phase" data-tooltip="{{st.date.month.meaning}} — {{st.date.month.bookPhase}}">{{st.date.dayOfMonth}} {{st.date.month.name}}</span>
+    </div>
+    {{/if}}
+    <div class="flt-date-sub">
+      <span><i class="{{seasonIcon}}"></i> {{st.seasonLabel}}</span>
+      {{#unless st.date.isFeast}}<span>{{st.date.weekLabel}}</span>{{/unless}}
+      <span>An {{st.date.year}}{{#if era}} {{era}}{{/if}}</span>
+    </div>
+  </header>
+
+  {{!-- Semaine de 11 jours --}}
+  <div class="flt-week {{#if st.date.isFeast}}feast{{/if}}">
+    {{#each weekDots}}
+    <span class="flt-wd {{#if current}}current{{/if}} {{#if deuil}}deuil{{/if}}" data-tooltip="{{name}}">{{abbr}}</span>
+    {{/each}}
+  </div>
+
+  {{!-- L'année : 8 fêtes + 8 mois --}}
+  <div class="flt-year">
+    {{#each months}}
+    <div class="flt-seg season-{{season}} {{#if current}}current{{/if}}" data-tooltip="{{feast}} puis {{name}}">
+      <span class="flt-seg-feast"></span>
+      {{#if current}}<span class="flt-marker" style="left: {{marker}}%"></span>{{/if}}
+    </div>
+    {{/each}}
+  </div>
+  {{#unless st.date.isFeast}}
+  <div class="flt-next-feast flt-muted">
+    <span><i class="fa-regular fa-star"></i> {{st.nextFeast.feast.name}} dans {{st.nextFeast.inDays}} jour{{#if (gt st.nextFeast.inDays 1)}}s{{/if}}</span>
+    {{#if crowFeast}}<span class="flt-crow" data-tooltip="Les Sœurs du Corbeau comptent 4 ou 5 jours de retard sur les Frères du Rouillé"><i class="fa-solid fa-crow"></i> {{crowFeast}} chez le Corbeau</span>{{/if}}
+  </div>
+  {{/unless}}
+
+  {{!-- Les 4 Quarts de jour --}}
+  <div class="flt-quarters">
+    {{#each quarters}}
+    <button type="button" class="flt-quarter {{#if light}}light{{else}}dark{{/if}} {{#if current}}current{{/if}}"
+      {{#if ../isGM}}data-action="quarter" data-index="{{index}}"{{else}}disabled{{/if}}
+      data-tooltip="{{label}} — {{#if light}}Lumière{{else}}Obscurité{{/if}}">
+      <i class="{{icon}}"></i>
+      <span>{{label}}</span>
+    </button>
+    {{/each}}
+  </div>
+
+  {{!-- Avancement dans le Quart --}}
+  <div class="flt-progress" data-tooltip="Un Quart de jour = 6 heures = 24 tours de 15 minutes">
+    <div class="flt-progress-bar"><div style="width: {{progressPct}}%"></div></div>
+    <div class="flt-progress-label">
+      <span>Tour {{st.tour}}/{{st.toursPerQuarter}}</span>
+      <span class="flt-muted">≈ {{st.time}}</span>
+    </div>
+  </div>
+
+  {{!-- Luminosité & lune --}}
+  <div class="flt-sky">
+    <div class="flt-light {{#if st.isLight}}light{{else}}dark{{/if}}">
+      {{#if st.isLight}}
+        <strong><i class="fa-solid fa-sun"></i> Lumière</strong>
+      {{else}}
+        <strong><i class="fa-solid fa-eye-slash"></i> Obscurité</strong>
+        <small>Guide {{darkMalus}} pour OUVRIR LA MARCHE · jet de PERCEPTION sans vision nocturne{{#if st.moon.fullMoonNight}}{{#if house}} (pleine lune, par ciel dégagé){{/if}}{{/if}}</small>
+      {{/if}}
+      <small data-tooltip="CHERCHER DES PROVISIONS : saison (livre){{#if house}} ; de nuit + lune : 0 pleine lune, −1 quartiers, −2 nouvelle lune (règle maison){{/if}}"><i class="fa-solid fa-wheat-awn"></i> Chercher à manger : <strong>{{forage}}</strong>{{#if forageDetail}} <span class="flt-muted">({{forageDetail}})</span>{{/if}}</small>
+      <small class="flt-muted">{{sunMode}}{{#if manage}}{{#if synced}} · obscurité {{darknessPct}} %{{/if}}{{/if}}</small>
+    </div>
+    {{#if showMoon}}
+    <div class="flt-moon" data-tooltip="{{st.moon.name}} — {{moonPct}} % éclairée">
+      {{{moonSvg}}}
+      <div class="flt-moon-text">
+        <span>{{st.moon.name}}</span>
+        <small class="flt-muted">{{moonPct}} % éclairée{{#if moonWaxing}} · croissante{{else}} · décroissante{{/if}}</small>
+        {{#if st.moon.isFullToday}}<small class="flt-full">Jour de la pleine lune (almanach)</small>{{/if}}
+        {{#if st.moon.isNewToday}}<small class="flt-full">Jour de la nouvelle lune (almanach)</small>{{/if}}
+        {{#if st.moon.omen}}<small class="flt-omen" data-tooltip="Deux pleines lunes dans le même mois : présage (Guide du MJ p. 35)"><i class="fa-solid fa-eye"></i> Deux pleines lunes ce mois : présage !</small>{{/if}}
+      </div>
+    </div>
+    {{/if}}
+  </div>
+
+  {{#if omenDue}}<button type="button" class="flt-omen-due" data-action="omen" data-tooltip="Seconde pleine lune du mois : lancer 1d66 sur la table des présages"><i class="fa-solid fa-eye"></i> Présage à tirer (1d66)</button>{{/if}}
+
+  {{!-- Météo --}}
+  {{#if weather.on}}
+  {{#if isGM}}
+  <div class="flt-terrain">
+    <span class="flt-terrain-title"><i class="fa-solid fa-map-location-dot"></i> Terrain du groupe</span>
+    <div class="flt-terrain-list">
+      {{#each weather.regions}}
+      <button type="button" class="flt-chip {{#if current}}active{{/if}}" data-action="weatherRegion" data-region="{{key}}">{{label}}</button>
+      {{/each}}
+    </div>
+  </div>
+  {{/if}}
+  {{#if weather.show}}
+  <div class="flt-weather {{#unless weather.announced}}hidden-weather{{/unless}}">
+    <div class="flt-wtags">
+      {{#each weather.tags}}<span class="flt-wtag"><i class="fa-solid {{icon}}"></i> {{label}}</span>{{/each}}
+    </div>
+    <p class="flt-wphrase">{{weather.phrase}}</p>
+    {{#if weather.mods.length}}
+    <div class="flt-wmods" data-tooltip="Appliqué automatiquement aux jets de tous (PJ, PNJ, monstres){{#unless weather.announced}}, une fois la météo annoncée{{/unless}}">
+      {{#each weather.mods}}<span class="flt-wmod {{#if bonus}}bonus{{else}}malus{{/if}}" data-tooltip="{{why}}">{{action}} <strong>{{value}}</strong></span>{{/each}}
+    </div>
+    {{else}}{{#if isGM}}<p class="flt-wnomod flt-muted">Aucun bonus ni malus aujourd'hui.</p>{{/if}}{{/if}}
+    {{#each weather.endurance}}<p class="flt-wendurance"><i class="fa-solid fa-person-hiking"></i> {{this}}</p>{{/each}}
+    {{#if isGM}}
+    <div class="flt-wbuttons">
+      {{#unless weather.announced}}<button type="button" class="flt-wannounce" data-action="weatherAnnounce" data-tooltip="Montrer la météo aux joueurs et activer ses effets"><i class="fa-solid fa-bullhorn"></i> Annoncer la météo</button>{{/unless}}
+      <button type="button" data-action="weatherReroll" data-tooltip="Retirer la météo du jour"><i class="fa-solid fa-dice"></i></button>
+      <button type="button" data-action="weatherChoose" data-tooltip="Choisir la météo"><i class="fa-solid fa-sliders"></i></button>
+      <button type="button" data-action="weatherToggle" data-tooltip="Désactiver la météo"><i class="fa-solid fa-power-off"></i></button>
+    </div>
+    {{#unless weather.announced}}
+      {{#if weather.carried}}
+      <p class="flt-forecast flt-carried"><i class="fa-solid fa-arrows-rotate"></i> En attendant votre annonce, la météo d'hier continue ({{weather.carriedTags}}).</p>
+      {{else}}
+      <p class="flt-forecast flt-muted"><i class="fa-solid fa-lock"></i> Pas encore annoncée : invisible pour les joueurs, sans effet sur les jets.</p>
+      {{/if}}
+    {{/unless}}
+    {{#if weather.eclipseNote}}<p class="flt-forecast flt-eclipse" data-tooltip="Visible par vous seul"><i class="fa-solid fa-circle-half-stroke"></i> {{weather.eclipseNote}}</p>{{/if}}
+    {{#if weather.forecast}}
+    <div class="flt-tomorrow">
+      <span class="flt-muted" data-tooltip="Prévision visible par vous seul"><i class="fa-solid fa-eye"></i> Demain : {{weather.forecast}}{{#if weather.forecastManual}} <i class="fa-solid fa-pen" data-tooltip="Choisie par vous"></i>{{/if}}</span>
+      <button type="button" data-action="weatherRerollTomorrow" data-tooltip="Retirer la météo de demain"><i class="fa-solid fa-dice"></i></button>
+      <button type="button" data-action="weatherChooseTomorrow" data-tooltip="Choisir la météo de demain"><i class="fa-solid fa-sliders"></i></button>
+    </div>
+    {{/if}}
+    {{/if}}
+  </div>
+  {{/if}}
+  {{else}}
+  {{#if isGM}}<button type="button" class="flt-weather-off" data-action="weatherToggle"><i class="fa-solid fa-cloud-sun-rain"></i> Activer la météo</button>{{/if}}
+  {{/if}}
+
+  {{#if effects.length}}
+  <div class="flt-effects">
+    <div class="flt-effects-title"><i class="fa-solid fa-wand-magic-sparkles"></i> Effets en cours</div>
+    {{#each effects}}
+    <div class="flt-effect {{#if optional}}optional{{/if}}" data-tooltip="{{#if optional}}Proposé dans la fenêtre de jet, à cocher{{else}}Appliqué automatiquement aux jets{{/if}} · {{who}}">
+      <span>{{label}}{{#if value}} <strong>{{value}}</strong>{{/if}}</span>
+      <span class="flt-muted">{{left}} j</span>
+      {{#if ../isGM}}<a data-action="removeEffect" data-id="{{id}}" data-tooltip="Retirer"><i class="fa-solid fa-xmark"></i></a>{{/if}}
+    </div>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  {{#if st.date.isDeuil}}{{#if house}}
+  <div class="flt-deuil"><i class="fa-solid fa-skull"></i> Deuil : +1 aux Soins ou pour apaiser un mort, sur une tombe ou près d'un mort (non poussable).</div>
+  {{/if}}{{/if}}
+
+  {{!-- Son d'ambiance (réglage propre à chaque joueur) --}}
+  {{#if sound.available}}
+  <div class="flt-sound {{#unless sound.on}}muted{{/unless}}">
+    <button type="button" data-action="soundToggle" data-tooltip="{{#if sound.on}}Couper les sons d'ambiance{{else}}Activer les sons d'ambiance{{/if}}">
+      <i class="fa-solid {{#if sound.on}}{{#if sound.low}}fa-volume-low{{else}}fa-volume-high{{/if}}{{else}}fa-volume-xmark{{/if}}"></i>
+    </button>
+    <input type="range" class="flt-vol" min="0" max="100" step="5" value="{{sound.vol}}" {{#unless sound.on}}disabled{{/unless}} data-tooltip="Volume des sons d'ambiance">
+    <span class="flt-vol-val">{{sound.vol}} %</span>
+  </div>
+  {{/if}}
+
+  {{!-- Contrôles MJ --}}
+  {{#if isGM}}
+  <div class="flt-controls">
+    <button type="button" data-action="advance" data-seconds="-900" data-tooltip="Reculer d'un tour (15 min)"><i class="fa-solid fa-backward-step"></i></button>
+    <button type="button" data-action="advance" data-seconds="900" data-tooltip="Avancer d'un tour (15 min)">+1 tour</button>
+    <button type="button" data-action="advance" data-seconds="3600" data-tooltip="Avancer d'une heure">+1 h</button>
+    <button type="button" data-action="prevQuarter" data-tooltip="Début du Quart / Quart précédent"><i class="fa-solid fa-backward"></i></button>
+    <button type="button" data-action="nextQuarter" data-tooltip="Quart de jour suivant"><i class="fa-solid fa-forward"></i> Quart</button>
+    <button type="button" data-action="nextDay" data-tooltip="Matin du jour suivant"><i class="fa-solid fa-forward-fast"></i> Jour</button>
+  </div>
+  <div class="flt-controls flt-controls-2">
+    <button type="button" data-action="setDate" data-tooltip="Fixer la date"><i class="fa-solid fa-calendar-days"></i> Date</button>
+    <button type="button" data-action="almanac" data-tooltip="Almanach : fêtes, peuples, lune, règles maison"><i class="fa-solid fa-book-open"></i> Almanach</button>
+    <button type="button" data-action="announce" data-tooltip="Annoncer l'heure dans le tchat"><i class="fa-solid fa-bullhorn"></i></button>
+    {{#if lieuxOn}}<button type="button" data-action="openLieux" data-tooltip="Ambiances des lieux : village, taverne, crypte…"><i class="fa-solid fa-landmark"></i></button>{{/if}}
+    <button type="button" data-action="toggleSync" class="{{#if synced}}active{{/if}}"
+      data-tooltip="{{#if synced}}Éclairage de cette scène synchronisé avec le temps (cliquer pour désactiver, ex. souterrain){{else}}Scène non synchronisée (cliquer pour activer){{/if}}">
+      <i class="fa-solid {{#if synced}}fa-lightbulb{{else}}fa-ban{{/if}}"></i> Scène
+    </button>
+  </div>
+  {{/if}}
+</div>

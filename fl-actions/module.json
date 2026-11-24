@@ -1,0 +1,33 @@
+{
+  "id": "fl-actions",
+  "title": "Forbidden Lands – Barre d'actions",
+  "description": "Une barre d'actions pour le token sélectionné : attributs, compétences, armes, armures, actions de combat, sorts, talents, états, consommables, voyage. Un seul module, sans dépendance (remplace Token Action HUD + Core + socketlib).",
+  "version": "1.5.1",
+  "authors": [
+    {
+      "name": "Le MJ et Claude"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "forbidden-lands",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/fl-actions.mjs"
+  ],
+  "styles": [
+    "styles/fl-actions.css"
+  ],
+  "languages": [],
+  "url": "https://github.com/Dorian-HR/forbidden-lands-modules",
+  "manifest": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-actions/module.json",
+  "download": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/dist/fl-actions.zip"
+}

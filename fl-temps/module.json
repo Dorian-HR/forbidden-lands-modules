@@ -1,0 +1,36 @@
+{
+  "id": "fl-temps",
+  "title": "Forbidden Lands – Le Temps des Contrées",
+  "description": "Gestion du temps pour Forbidden Lands selon l'Almanach des Contrées Interdites : Quarts de jour, mois aturéens, fêtes, lune, luminosité, aube et crépuscule, et modificateurs automatiques dans les jets du système.",
+  "version": "5.1.2",
+  "authors": [
+    {
+      "name": "DAC 3D"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "esmodules": [
+    "scripts/fl-temps.mjs"
+  ],
+  "styles": [
+    "styles/fl-temps.css"
+  ],
+  "languages": [],
+  "relationships": {
+    "systems": [
+      {
+        "id": "forbidden-lands",
+        "type": "system",
+        "compatibility": {
+          "minimum": "14"
+        }
+      }
+    ]
+  },
+  "url": "https://github.com/Dorian-HR/forbidden-lands-modules",
+  "manifest": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-temps/module.json",
+  "download": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/dist/fl-temps.zip"
+}

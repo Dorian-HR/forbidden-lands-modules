@@ -1,0 +1,45 @@
+{
+  "id": "fl-effets",
+  "title": "Forbidden Lands – Effets",
+  "description": "Animations automatiques pour Forbidden Lands : attaques d'armes et de monstres selon leur élément (feu, glace, foudre, poison, acide, ombre), les 70 sorts du jeu avec le cercle d'incantation de leur école, et le sang quand on prend des dégâts.",
+  "version": "2.0.1",
+  "authors": [
+    {
+      "name": "DAC 3D"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "esmodules": [
+    "scripts/fl-effets.mjs"
+  ],
+  "styles": [
+    "styles/fl-effets.css"
+  ],
+  "relationships": {
+    "systems": [
+      {
+        "id": "forbidden-lands",
+        "type": "system",
+        "compatibility": {
+          "minimum": "14"
+        }
+      }
+    ],
+    "requires": [
+      {
+        "id": "sequencer",
+        "type": "module"
+      },
+      {
+        "id": "JB2A_DnD5e",
+        "type": "module"
+      }
+    ]
+  },
+  "url": "https://github.com/Dorian-HR/forbidden-lands-modules",
+  "manifest": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-effets/module.json",
+  "download": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/dist/fl-effets.zip"
+}

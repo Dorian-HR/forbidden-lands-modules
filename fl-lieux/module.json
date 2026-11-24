@@ -1,0 +1,42 @@
+{
+  "id": "fl-lieux",
+  "title": "Forbidden Lands – Ambiances des lieux",
+  "description": "Ambiances sonores des lieux des Contrées Interdites (village, taverne, forge, crypte, mine, antre de dragon, Brume Écarlate…). Placées sur la carte comme des sons d'ambiance de Foundry, elles changent selon le Quart de la journée et la météo du module « Le Temps des Contrées ». Cloches du Matin et du Soir, glas, et couche de tension pour le MJ.",
+  "version": "1.3.2",
+  "authors": [
+    {
+      "name": "DAC 3D"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "esmodules": [
+    "scripts/fl-lieux.mjs"
+  ],
+  "styles": [
+    "styles/fl-lieux.css"
+  ],
+  "relationships": {
+    "recommends": [
+      {
+        "id": "fl-temps",
+        "type": "module",
+        "reason": "Pour que les ambiances suivent l'heure, la saison et la météo."
+      }
+    ],
+    "systems": [
+      {
+        "id": "forbidden-lands",
+        "type": "system",
+        "compatibility": {
+          "minimum": "14"
+        }
+      }
+    ]
+  },
+  "url": "https://github.com/Dorian-HR/forbidden-lands-modules",
+  "manifest": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-lieux/module.json",
+  "download": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/dist/fl-lieux.zip"
+}

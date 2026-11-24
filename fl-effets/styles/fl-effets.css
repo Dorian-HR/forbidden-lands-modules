@@ -1,0 +1,5 @@
+.fle-dialog .form-group { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.fle-dialog .form-group label { flex: 0 0 90px; }
+.fle-dialog .form-group input, .fle-dialog .form-group select { flex: 1; }
+.fle-dialog .hint { font-size: 12px; opacity: .8; }
+.fle-dialog code { font-size: 11px; word-break: break-all; }

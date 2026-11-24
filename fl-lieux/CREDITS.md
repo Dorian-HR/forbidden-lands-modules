@@ -1,0 +1,68 @@
+# Sons des ambiances de lieux
+
+Enregistrements de terrain issus de Freesound (https://freesound.org), tous sous licence Creative Commons 0 (domaine public).
+Merci à leurs auteurs. Mixés, bouclés et égalisés pour ce module.
+
+- arene_foule : https://freesound.org/s/160493/
+- arene_vikings : https://freesound.org/s/856541/
+- bateau_grince : https://freesound.org/s/31574/
+- bouillonnement : https://freesound.org/s/423959/
+- braises : https://freesound.org/s/532191/
+- caverne : https://freesound.org/s/38963/
+- chaine : https://freesound.org/s/199282/
+- champs_sombres : https://freesound.org/s/164272/
+- chevaux : https://freesound.org/s/531429/
+- choeur_sombre : https://freesound.org/s/273804/
+- clapotis : https://freesound.org/s/637945/
+- cloche : https://freesound.org/s/425172/
+- coeur : https://freesound.org/s/369017/
+- corbeaux : https://freesound.org/s/214869/
+- drapeau : https://freesound.org/s/154794/
+- eglise : https://freesound.org/s/427862/
+- etrange : https://freesound.org/s/171992/
+- feu_camp : https://freesound.org/s/40699/
+- feu_camp_nuit : https://freesound.org/s/248303/
+- forge : https://freesound.org/s/137836/
+- glas : https://freesound.org/s/329324/
+- gouttes_grotte : https://freesound.org/s/177958/
+- grillons : https://freesound.org/s/175020/
+- hameau_ferme : https://freesound.org/s/488064/
+- hameau_poules : https://freesound.org/s/346961/
+- hibou_foret : https://freesound.org/s/475376/
+- marche : https://freesound.org/s/173013/
+- marche_medieval : https://freesound.org/s/424790/
+- mine : https://freesound.org/s/627789/
+- moines : https://freesound.org/s/48299/
+- mouettes : https://freesound.org/s/317676/
+- moulin : https://freesound.org/s/263583/
+- murmures : https://freesound.org/s/175944/
+- paturages : https://freesound.org/s/136248/
+- port : https://freesound.org/s/208074/
+- prison : https://freesound.org/s/72851/
+- scie : https://freesound.org/s/383725/
+- souffle_bete : https://freesound.org/s/261464/
+- taverne_calme : https://freesound.org/s/651364/
+- taverne_pirate : https://freesound.org/s/695295/
+- taverne_pub : https://freesound.org/s/690597/
+- vagues_rochers : https://freesound.org/s/648860/
+- vent_doux : https://freesound.org/s/397091/
+- vent_ruines : https://freesound.org/s/69509/
+- vent_tonal : https://freesound.org/s/397092/
+- village_jour : https://freesound.org/s/578072/
+- village_nuit : https://freesound.org/s/400353/
+- barde_auberge : « Medieval: The Old Tower Inn » par RandomMind, CC0 — https://opengameart.org/content/medieval-the-old-tower-inn
+- hiver_jour : https://freesound.org/s/335732/
+- hiver_vent : https://freesound.org/s/754256/
+- ruisseau : https://freesound.org/s/469009/
+- riviere : https://freesound.org/s/383775/
+- barde_conte : « Medieval: The Bard's Tale » par RandomMind, CC0 — https://opengameart.org/content/medieval-the-bards-tale
+- barde_menestrel : « Medieval: Minstrel Dance » par RandomMind, CC0 — https://opengameart.org/content/medieval-minstrel-dance
+- barde_festin : « Medieval: King's Feast » par RandomMind, CC0 — https://opengameart.org/content/medieval-kings-feast
+- barde_marche : « Medieval: Market Day » par RandomMind, CC0 — https://opengameart.org/content/medieval-market-day
+- barde_rejouissance : « Medieval: Rejoicing » par RandomMind, CC0 — https://opengameart.org/content/medieval-rejoicing
+- combat_0 : « Medieval: Battle » par RandomMind, CC0 — https://opengameart.org/content/medieval-battle
+- combat_1 : « Battle Theme A » par cynicmusic, CC0 — https://opengameart.org/content/battle-theme-a
+- combat_2 : « Battle Theme B for RPG » par cynicmusic, CC0 — https://opengameart.org/content/battle-theme-b-for-rpg
+- combat_3 : « Determined Pursuit » par Emma_MA, CC0 — https://opengameart.org/content/determined-pursuit-epic-orchestra-loop
+- combat_4 : « Epic Boss Battle » par Juhani Junkala (SubspaceAudio), CC0 — https://opengameart.org/content/boss-battle-music
+- trempe : https://freesound.org/s/50620/ et https://freesound.org/s/436470/
