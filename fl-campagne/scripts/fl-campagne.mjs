@@ -391,8 +391,14 @@ async function checkRappels() {
   await game.settings.set(MOD, "etat", e);
 }
 
+/** Les conseils du guide à plat, avec leur état. */
+function guideItems(I, e) {
+  return arr(I.c.guide).flatMap((g, i) => arr(g.conseils).map((c, j) => ({ ...c, etape: g.etape, i, j, fait: !!e.guide?.[i]?.[j] })));
+}
+const goAttr = (c) => c.site ? `data-sel="site:${c.site}"` : `data-tab-go="${c.aller ?? "tableau"}"`;
+
 const TABS = [
-  ["tableau", "Tableau", "fa-solid fa-chess-rook"], ["qui", "Qui est où", "fa-solid fa-users"], ["sites", "Sites", "fa-solid fa-map-location-dot"],
+  ["tableau", "Tableau", "fa-solid fa-chess-rook"], ["guide", "Guide", "fa-solid fa-compass"], ["qui", "Qui est où", "fa-solid fa-users"], ["sites", "Sites", "fa-solid fa-map-location-dot"],
   ["acteurs", "Acteurs majeurs", "fa-solid fa-crown"], ["relations", "Relations", "fa-solid fa-diagram-project"], ["vond", "Vers Vond", "fa-solid fa-chess-king"], ["artefacts", "Artefacts", "fa-solid fa-gem"], ["tresors", "Trésors", "fa-solid fa-coins"], ["contradictions", "Points flous", "fa-solid fa-scale-balanced"], ["legendes", "Légendes", "fa-solid fa-scroll"],
   ["frise", "Frise", "fa-solid fa-timeline"], ["verites", "Croyances & vérité", "fa-solid fa-mask"], ["temps", "Horloges & événements", "fa-solid fa-hourglass-half"], ["sessions", "Sessions", "fa-solid fa-book-open"], ["pj", "Les PJ", "fa-solid fa-user-shield"]
 ];
@@ -416,7 +422,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const e = current();
     if (!I.sites.length && !I.majeurs.length) return this.#empty();
     const nav = TABS.map(([id, label, icon]) => `<a class="flc-tab${this.tab === id ? " active" : ""}" data-tab="${id}"><i class="${icon}"></i> ${label}</a>`).join("");
-    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), frise: () => this.#frise(I, e), verites: () => this.#verites(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
+    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), frise: () => this.#frise(I, e), guide: () => this.#guide(I, e), verites: () => this.#verites(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
       artefacts: () => this.#artefacts(I, e), legendes: () => this.#legendes(I, e), temps: () => this.#temps(I, e), sessions: () => this.#sessions(I, e), pj: () => this.#pj(I, e) })[this.tab]();
     return `<nav class="flc-nav">${nav}<input type="search" class="flc-search" placeholder="Rechercher partout…" value="${esc(this.q)}" data-q></nav><section class="flc-body">${body}</section>`;
   }
@@ -476,6 +482,13 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
         <p><b>Préparation :</b> ${Object.values(e.preparation).filter((v) => typeof v === "string" && v.trim()).length ? "en cours" : "à faire"} — <a data-tab-go="sessions">ouvrir la préparation</a></p>
         ${e.sessions.length ? `<p><b>Dernière session :</b> ${esc(e.sessions.at(-1).titre || `Session ${e.sessions.length}`)}</p>` : ""}
       </div>
+      ${(() => { const items = guideItems(I, e).filter((c) => c.etape !== "À chaque session"); const n = items.find((c) => !c.fait);
+        if (!items.length) return "";
+        return `<div class="flc-card flc-next"><h3>Prochaine étape conseillée <span class="flc-hint">${items.filter((c) => c.fait).length}/${items.length}</span></h3>
+          ${n ? `<p class="flc-hint">${esc(n.etape)}</p><p><b>${esc(n.titre)}</b></p><p>${esc(n.texte)}</p>
+          <div class="flc-buttons"><button type="button" ${goAttr(n)}><i class="fa-solid fa-arrow-right"></i> J'y vais</button>
+            <button type="button" data-guide-done="${n.i}.${n.j}"><i class="fa-solid fa-check"></i> C'est fait</button>
+            <button type="button" data-tab-go="guide">Tout le guide</button></div>` : `<p>Tout le guide est fait. Bonne fin de campagne !</p>`}</div>`; })()}
       ${(() => { const cs = arr(I.campagne.conseils_mj); if (!cs.length) return "";
         const n = (this._conseil ?? Math.floor(Math.random() * cs.length)) % cs.length; this._conseil = n;
         return `<div class="flc-card"><h3>Conseil du livre <span class="flc-hint">${n + 1}/${cs.length}</span></h3><p>${esc(cs[n])}</p>
@@ -865,6 +878,20 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       `<li>${h.k ? `<a data-sel="${h.k}">${esc(h.nom)}</a>` : `<a data-tab-go="${h.tab}">${esc(h.nom)}</a>`}${pageTag(h.o)} <span class="flc-hint">${esc(h.type)} · mots : ${h.shared.map(esc).join(", ")}</span></li>`).join("")}</ul>`;
   }
 
+  /* ---------- Guide de campagne ---------- */
+  #guide(I, e) {
+    const groups = arr(I.c.guide);
+    const book = arr(I.campagne.conseils_mj);
+    return `<div class="flc-scroll">
+      <p class="flc-hint">Par où commencer et quoi faire ensuite. <b>Ces conseils sont ceux de Claude, pas du livre</b> : ils s'appuient sur le contenu vérifié du livre et sur les outils du module. Cochez ce qui est fait ; la prochaine étape s'affiche sur le Tableau.</p>
+      ${groups.map((g, i) => { const done = arr(g.conseils).filter((_, j) => e.guide?.[i]?.[j]).length;
+        return `<h3>${esc(g.etape)} <span class="flc-hint">${done}/${arr(g.conseils).length}</span></h3>${arr(g.conseils).map((c, j) => { const f = !!e.guide?.[i]?.[j];
+          return `<div class="flc-guide ${f ? "done" : ""}"><label class="flc-check"><input type="checkbox" data-path="guide.${i}.${j}" ${f ? "checked" : ""}> <span><b>${esc(c.titre)}</b><br>${esc(c.texte)}</span></label>
+            <button type="button" class="flc-small" ${goAttr({ ...c })}>Ouvrir</button></div>`; }).join("")}`; }).join("")}
+      ${book.length ? `<h3>Les conseils du livre (${book.length})</h3><p class="flc-hint">Tirés du Châtiment du Corbeau, vérifiés contre le PDF.</p><ul class="flc-livre">${book.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}
+    </div>`;
+  }
+
   /* ---------- Frise chronologique ---------- */
   #frise(I, e) {
     const t = today();
@@ -1179,7 +1206,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   }
 
   async #click(ev) {
-    const t = ev.target.closest("[data-mklegend],[data-conseil],[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
+    const t = ev.target.closest("[data-guide-done],[data-mklegend],[data-conseil],[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
     if (!t) return;
     if (t.matches("input, select, textarea, label")) return;
     const d = t.dataset;
@@ -1187,6 +1214,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     if (d.official) return this.#official(d.official);
     if (d.rumeur) return this.#rumeur(d.rumeur);
     if (d.print) return printSite(d.print);
+    if (d.guideDone) { const e2 = current(); foundry.utils.setProperty(e2, `guide.${d.guideDone}`, true); saveEtat(e2); return this.render(); }
     if (d.mklegend !== undefined) { await makeLegende(index().legendes[Number(d.mklegend)]); return this.render(); }
     if (d.conseil) { this._conseil = (this._conseil ?? 0) + 1; return this.render(); }
     if (d.pin) return placePin(d.pin, this);

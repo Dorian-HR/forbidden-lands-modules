@@ -201,3 +201,10 @@ details.flc-lieu p { margin-left: 22px; }
 .flc-ver td.flc-croit { font-style: italic; color: #6d4a07; }
 .fl-campagne .flc-ver tr.done td { opacity: .5; }
 .flc-secret { padding: 3px 0; } .flc-secret.su span { opacity: .5; text-decoration: line-through; }
+
+/* guide */
+.flc-next { border-color: var(--flc-accent); border-left: 4px solid var(--flc-accent); }
+.flc-guide { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px; border-bottom: 1px dotted var(--flc-line); }
+.flc-guide .flc-check { flex: 1; }
+.flc-guide.done span { opacity: .5; }
+.flc-livre li { margin: 4px 0; }
