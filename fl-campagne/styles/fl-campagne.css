@@ -1,0 +1,127 @@
+/* Forbidden Lands – Suivi de campagne : le style de la fiche (papier blanc, encre noire, IM Fell, bandeau sombre) */
+.fl-campagne {
+  --flc-ink: #222020;
+  --flc-soft: #77706a;
+  --flc-line: #d8d2c8;
+  --flc-paper: #fff;
+  --flc-paper2: #f7f4ee;
+  --flc-band: #3a3a3a;
+  --flc-accent: #a00404;
+  --flc-serif: "IM Fell DW Pica", "IM Fell Great Primer", Georgia, serif;
+  --flc-sc: "IM Fell DW Pica SC", "IM Fell DW Pica", Georgia, serif;
+}
+.fl-campagne .window-content { padding: 0; display: flex; flex-direction: column; background: var(--flc-paper); color: var(--flc-ink); font-family: var(--flc-serif); font-size: 15px; overflow: hidden; }
+
+/* onglets : le bandeau sombre de la fiche */
+.flc-nav { display: flex; flex-wrap: wrap; background: var(--flc-band); padding: 0 6px; flex: none; }
+.fl-campagne .flc-tab { color: #fff; padding: 8px 11px 6px; font-family: var(--flc-sc); font-size: 14px; letter-spacing: .4px; text-transform: uppercase; cursor: pointer; white-space: nowrap; text-decoration: none; }
+.flc-tab i { opacity: .8; margin-right: 3px; }
+.fl-campagne .flc-tab:hover { text-shadow: 0 0 8px var(--flc-accent); color: #fff; }
+.fl-campagne .flc-tab.active { text-shadow: 0 0 6px var(--flc-accent), 0 0 12px var(--flc-accent); }
+.flc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+.flc-scroll { overflow-y: auto; padding: 10px 14px; flex: 1; min-height: 0; }
+.flc-split { overflow: hidden; grid-template-rows: minmax(0, 1fr); display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); flex: 1; min-height: 0; }
+.flc-split-even { grid-template-columns: 1fr 1fr; }
+.flc-detail { overflow-y: auto; border-left: 1px solid var(--flc-line); background: var(--flc-paper2); padding: 10px 14px; min-height: 0; }
+
+h2, h3, h4 { font-family: var(--flc-sc); font-weight: normal; color: var(--flc-ink); border: none; margin: 8px 0 4px; }
+.fl-campagne h2 { font-size: 22px; }
+.fl-campagne h3 { font-size: 17px; border-bottom: 1px solid var(--flc-line); padding-bottom: 2px; }
+.fl-campagne h4 { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: #4a4542; margin-top: 12px; }
+.fl-campagne p { margin: 3px 0; line-height: 1.35; }
+.fl-campagne ul { margin: 2px 0 4px; padding-left: 18px; }
+.fl-campagne li { margin: 2px 0; }
+.fl-campagne a { color: var(--flc-accent); cursor: pointer; }
+.flc-hint { color: var(--flc-soft); font-style: italic; font-size: 13px; }
+.flc-sub { color: var(--flc-soft); font-style: italic; margin-top: -2px; }
+.flc-lead { font-size: 15px; }
+.flc-date { font-family: var(--flc-sc); font-size: 16px; }
+.flc-nowrap { white-space: nowrap; }
+
+/* cartes */
+.flc-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-content: start; }
+.flc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; align-content: start; }
+.flc-card { border: 1px solid var(--flc-line); border-radius: 4px; padding: 8px 12px; background: var(--flc-paper); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.flc-wide { grid-column: 1 / -1; }
+.flc-wide2 { grid-column: span 2; }
+.flc-click { cursor: pointer; }
+.flc-click:hover, .flc-card.sel { border-color: var(--flc-accent); }
+.flc-ideas { background: #fff8ef; border-color: #e5c9a0; margin-bottom: 8px; }
+.flc-alert { color: var(--flc-accent); font-weight: bold; }
+
+/* tableaux */
+.flc-table { width: 100%; border-collapse: collapse; }
+.flc-table th { text-align: left; font-family: var(--flc-sc); font-weight: normal; font-size: 13px; text-transform: uppercase; color: var(--flc-soft); border-bottom: 1px solid var(--flc-ink); padding: 3px 6px; position: sticky; top: -10px; background: var(--flc-paper); }
+.flc-table td { padding: 5px 6px; border-bottom: 1px solid var(--flc-line); vertical-align: top; }
+.flc-table tr[data-sel] { cursor: pointer; }
+.flc-table tr[data-sel]:hover { background: #faf3ea; }
+.flc-table tr.sel { background: #f6e6dc; }
+.flc-table tr.dead, .dead { opacity: .5; text-decoration: line-through; }
+.flc-table tr.done { opacity: .55; }
+.flc-table tr.due td, .flc-list li.due { color: var(--flc-accent); }
+
+/* fiches */
+.flc-fiche .flc-key { background: var(--flc-paper); border: 1px solid var(--flc-line); border-left: 3px solid var(--flc-ink); padding: 6px 10px; margin: 6px 0; }
+.flc-key p { margin: 4px 0; }
+.flc-key span { display: block; margin-top: 4px; font-family: var(--flc-sc); font-size: 13px; text-transform: uppercase; color: var(--flc-soft); vertical-align: top; }
+.flc-people { list-style: none; padding-left: 0; }
+.flc-people li { padding: 2px 0; border-bottom: 1px dotted var(--flc-line); }
+details.flc-lieu { border-bottom: 1px dotted var(--flc-line); padding: 3px 0; }
+details.flc-lieu summary { cursor: pointer; }
+details.flc-lieu[open] summary { color: var(--flc-accent); }
+details.flc-lieu p { margin-left: 22px; }
+.flc-rumeur { display: block; margin: 3px 0; }
+
+/* étiquettes */
+.flc-tag { font-family: var(--flc-sc); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; color: var(--flc-soft); white-space: nowrap; }
+.flc-tag.mort, .flc-tag.faux { color: var(--flc-accent); }
+.flc-att { font-size: 13px; white-space: nowrap; padding: 0 5px; border-radius: 3px; }
+.flc-att.hostile, .flc-att.ennemi { background: #f2d3cc; color: #7c1606; }
+.flc-att.mefiant { background: #f4e6cc; color: #6d4a07; }
+.flc-att.neutre { background: #ebe8e2; color: #4a4542; }
+.flc-att.amical, .flc-att.allie { background: #dcebd3; color: #2f5320; }
+.flc-status { font-size: 13px; padding: 0 5px; border-radius: 3px; background: #ebe8e2; white-space: nowrap; }
+.flc-status.rumeur { background: #f4e6cc; } .flc-status.visite { background: #dfe7f1; } .flc-status.explore, .flc-status.conquis { background: #dcebd3; }
+
+/* champs */
+.flc-edit { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+.flc-edit.flc-inline { flex-direction: row; flex-wrap: wrap; gap: 12px; }
+.flc-edit label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--flc-soft); }
+.flc-edit.flc-inline label { flex-direction: row; align-items: center; gap: 6px; }
+.flc-check { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: 6px; color: var(--flc-ink) !important; font-size: 14px !important; cursor: pointer; }
+.fl-campagne input[type="text"], .fl-campagne input[type="search"], .fl-campagne input[type="number"], .fl-campagne select, .fl-campagne textarea {
+  font-family: var(--flc-serif); font-size: 14px; color: var(--flc-ink); background: #fff; border: 1px solid #b9b2a8; border-radius: 3px; padding: 3px 6px; }
+.fl-campagne textarea { width: 100%; resize: vertical; }
+.flc-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.flc-row label { color: var(--flc-soft); }
+.flc-row input[type="text"] { flex: 1; min-width: 180px; }
+.flc-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.flc-filters input { flex: 1; min-width: 200px; }
+.flc-prep { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
+
+/* boutons */
+.fl-campagne button { font-family: var(--flc-serif); font-size: 14px; }
+.flc-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.flc-buttons button { flex: 1 1 auto; }
+.fl-campagne button.flc-small { font-size: 12px; padding: 0 6px; line-height: 20px; width: auto; }
+
+/* horloges */
+.flc-clock, .flc-clock-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.flc-clock-row .flc-clock { flex: 1; }
+.flc-clock-name { flex: 1; }
+.flc-clock-segs { display: inline-flex; gap: 2px; }
+.flc-clock-segs span { width: 16px; height: 16px; border: 1px solid var(--flc-ink); border-radius: 2px; cursor: pointer; background: #fff; }
+.flc-clock-segs span.on { background: var(--flc-accent); border-color: var(--flc-accent); }
+
+/* écran vide */
+.flc-empty { margin: auto; text-align: center; max-width: 460px; padding: 40px; }
+.flc-empty button { margin-top: 12px; }
+.flc-session textarea { margin-top: 4px; }
+
+/* description officielle */
+.flc-fiche h2 a { color: var(--flc-ink); text-decoration: none; }
+.flc-fiche h2 a:hover { color: var(--flc-accent); }
+.flc-official-ico { font-size: 14px; color: var(--flc-soft); vertical-align: middle; }
+.fl-campagne button.flc-official { width: 100%; margin: 4px 0 6px; background: var(--flc-band); color: #fff; border: none; padding: 4px; }
+.fl-campagne button.flc-official:hover { box-shadow: 0 0 6px var(--flc-accent); }
