@@ -257,6 +257,18 @@ function lieuBook(s, l) {
 /*  La fenêtre                                   */
 /* -------------------------------------------- */
 
+/* Légendes absentes de Foundry : une page à remplir par le MJ */
+const LEG_J = "Légendes des acteurs majeurs";
+const legendePerso = (l) => game.journal.find((j) => j.name === LEG_J)?.pages.find((p) => p.name === l.titre);
+async function makeLegende(l) {
+  let j = game.journal.find((x) => x.name === LEG_J);
+  if (!j) j = await JournalEntry.create({ name: LEG_J, ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE } });
+  let page = j.pages.find((p) => p.name === l.titre);
+  if (!page) [page] = await j.createEmbeddedDocuments("JournalEntryPage", [{ name: l.titre, type: "text", text: { content: "<p><em>Collez ici le texte de la légende (Le Châtiment du Corbeau, fin du livre).</em></p>" } }]);
+  j.sheet.render(true, { pageId: page.id, mode: "edit" });
+  page.sheet?.render(true);
+}
+
 /* -------------------------------------------- */
 /*  Fiche de préparation imprimable               */
 /* -------------------------------------------- */
@@ -712,7 +724,11 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       ${I.legendes.map((l, i) => { const s = e.legendes[i] ?? {}; return `<tr class="${s.lue ? "done" : ""}"><td><input type="checkbox" data-path="legendes.${i}.lue" ${s.lue ? "checked" : ""}></td>
         <td><b>${esc(l.titre)}</b>${pageTag(l)}</td><td>${esc(l.sujet ?? "")}<br><span class="flc-hint">${esc(l.site_ou_acteur ?? "")}</span></td>
         <td class="flc-nowrap">${l.journal_en ? `<button type="button" class="flc-small" data-book="${esc(l.journal_en)}|${esc(l.journal_fr ?? "")}" data-page="${esc(l.page_en ?? "")}|${esc(l.page_fr ?? "")}">Lire</button>
-          <button type="button" class="flc-small" data-show="${esc(l.journal_en)}|${esc(l.journal_fr ?? "")}" data-page="${esc(l.page_en ?? "")}|${esc(l.page_fr ?? "")}">Montrer aux joueurs</button>` : ""}</td></tr>`; }).join("")}
+          <button type="button" class="flc-small" data-show="${esc(l.journal_en)}|${esc(l.journal_fr ?? "")}" data-page="${esc(l.page_en ?? "")}|${esc(l.page_fr ?? "")}">Montrer aux joueurs</button>`
+          : legendePerso(l) ? `<button type="button" class="flc-small" data-book="${LEG_J}" data-page="${esc(l.titre)}">Lire</button>
+          <button type="button" class="flc-small" data-show="${LEG_J}" data-page="${esc(l.titre)}">Montrer aux joueurs</button>`
+          : `<button type="button" class="flc-small" data-mklegend="${i}" data-tooltip="Cette légende n'existe pas dans Foundry : crée une page vide où coller le texte du livre">Créer la page</button>`}</td></tr>`; }).join("")}
+      <p class="flc-hint">« Créer la page » : ces légendes sont dans le livre (p. 217-224) mais pas dans la version Foundry. Le module crée une page vide à leur nom dans le journal « ${LEG_J} » ; collez-y le texte de votre livre, et « Lire » / « Montrer aux joueurs » fonctionneront.</p>
       </tbody></table></div>`;
   }
 
@@ -1163,7 +1179,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   }
 
   async #click(ev) {
-    const t = ev.target.closest("[data-conseil],[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
+    const t = ev.target.closest("[data-mklegend],[data-conseil],[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
     if (!t) return;
     if (t.matches("input, select, textarea, label")) return;
     const d = t.dataset;
@@ -1171,6 +1187,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     if (d.official) return this.#official(d.official);
     if (d.rumeur) return this.#rumeur(d.rumeur);
     if (d.print) return printSite(d.print);
+    if (d.mklegend !== undefined) { await makeLegende(index().legendes[Number(d.mklegend)]); return this.render(); }
     if (d.conseil) { this._conseil = (this._conseil ?? 0) + 1; return this.render(); }
     if (d.pin) return placePin(d.pin, this);
     if (d.node) { this.sel = d.node; this.tab = "qui"; return this.render(); }
