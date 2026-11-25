@@ -382,7 +382,7 @@ async function checkRappels() {
 const TABS = [
   ["tableau", "Tableau", "fa-solid fa-chess-rook"], ["qui", "Qui est où", "fa-solid fa-users"], ["sites", "Sites", "fa-solid fa-map-location-dot"],
   ["acteurs", "Acteurs majeurs", "fa-solid fa-crown"], ["relations", "Relations", "fa-solid fa-diagram-project"], ["vond", "Vers Vond", "fa-solid fa-chess-king"], ["artefacts", "Artefacts", "fa-solid fa-gem"], ["tresors", "Trésors", "fa-solid fa-coins"], ["contradictions", "Points flous", "fa-solid fa-scale-balanced"], ["legendes", "Légendes", "fa-solid fa-scroll"],
-  ["temps", "Horloges & événements", "fa-solid fa-hourglass-half"], ["sessions", "Sessions", "fa-solid fa-book-open"], ["pj", "Les PJ", "fa-solid fa-user-shield"]
+  ["frise", "Frise", "fa-solid fa-timeline"], ["verites", "Croyances & vérité", "fa-solid fa-mask"], ["temps", "Horloges & événements", "fa-solid fa-hourglass-half"], ["sessions", "Sessions", "fa-solid fa-book-open"], ["pj", "Les PJ", "fa-solid fa-user-shield"]
 ];
 
 class CampagneApp extends foundry.applications.api.ApplicationV2 {
@@ -397,13 +397,14 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   relSite = "";
   q = "";
   trFiltre = "restants";
+  verSite = "";
 
   async _renderHTML() {
     const I = index();
     const e = current();
     if (!I.sites.length && !I.majeurs.length) return this.#empty();
     const nav = TABS.map(([id, label, icon]) => `<a class="flc-tab${this.tab === id ? " active" : ""}" data-tab="${id}"><i class="${icon}"></i> ${label}</a>`).join("");
-    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
+    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), frise: () => this.#frise(I, e), verites: () => this.#verites(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
       artefacts: () => this.#artefacts(I, e), legendes: () => this.#legendes(I, e), temps: () => this.#temps(I, e), sessions: () => this.#sessions(I, e), pj: () => this.#pj(I, e) })[this.tab]();
     return `<nav class="flc-nav">${nav}<input type="search" class="flc-search" placeholder="Rechercher partout…" value="${esc(this.q)}" data-q></nav><section class="flc-body">${body}</section>`;
   }
@@ -463,6 +464,10 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
         <p><b>Préparation :</b> ${Object.values(e.preparation).filter((v) => typeof v === "string" && v.trim()).length ? "en cours" : "à faire"} — <a data-tab-go="sessions">ouvrir la préparation</a></p>
         ${e.sessions.length ? `<p><b>Dernière session :</b> ${esc(e.sessions.at(-1).titre || `Session ${e.sessions.length}`)}</p>` : ""}
       </div>
+      ${(() => { const cs = arr(I.campagne.conseils_mj); if (!cs.length) return "";
+        const n = (this._conseil ?? Math.floor(Math.random() * cs.length)) % cs.length; this._conseil = n;
+        return `<div class="flc-card"><h3>Conseil du livre <span class="flc-hint">${n + 1}/${cs.length}</span></h3><p>${esc(cs[n])}</p>
+          <div class="flc-buttons"><button type="button" class="flc-small" data-conseil="1">Conseil suivant</button><button type="button" class="flc-small" data-tab-go="verites">Croyances &amp; vérité</button></div></div>`; })()}
       <div class="flc-card">
         <h3>Fichiers</h3>
         <p class="flc-hint">Le contenu du livre vient de votre fichier privé ; votre partie (qui est où, notes, sessions…) est gardée dans le monde.</p>
@@ -750,6 +755,8 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       const rum = arr(here._rum).filter((r, i) => !(e.sites[here.id]?.rumeursDites ?? {})[i]);
       if (rum.length) ideas.push(`Rumeurs à glisser ici : ${rum.length}`);
     }
+    if (here) { const keys = nameKeys([here.nom]).filter((k) => k.length >= 5);
+      for (const c of arr(I.campagne.conseils_mj)) if (keys.some((k) => norm(c).includes(k))) ideas.push(`Conseil du livre : ${esc(c)}`); }
     const near = e.horloges.filter((h) => h.rempli >= h.segments - 1 && h.rempli < h.segments);
     if (near.length) ideas.push(`Horloges presque pleines : ${near.map((h) => esc(h.nom)).join(", ")}`);
     const soon = e.evenements.filter((v) => !v.fait && v.jour != null && v.jour <= t.day + 7);
@@ -790,7 +797,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
           <label>Son passé et ses secrets <textarea rows="3" data-path="pj.${a.id}.passe">${esc(s.passe ?? "")}</textarea></label>
           <label>Ce qu'il cherche <textarea rows="2" data-path="pj.${a.id}.buts">${esc(s.buts ?? "")}</textarea></label>
           <label>Fils à tirer pour lui <textarea rows="2" data-path="pj.${a.id}.fils">${esc(s.fils ?? "")}</textarea></label>
-        </div></div>`;
+        </div>${this.#pistes(I, [s.passe, s.buts, s.fils, serment].filter(Boolean).join(" "))}</div>`;
     }).join("") || "<p class='flc-hint'>Aucun personnage joueur.</p>"}</div>`;
   }
 
@@ -819,6 +826,83 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       if (t.dataset.q !== undefined) { this.q = t.value; clearTimeout(this._fq); this._fq = setTimeout(() => { if (this.q.trim().length >= 2) this.tab = "recherche"; this.render(); }, 250); return; }
       if (t.dataset.filter === "texte") { this.filtre.texte = t.value; clearTimeout(this._ft); this._ft = setTimeout(() => this.render(), 250); }
     });
+  }
+
+  /** Ce qui, dans le livre, rejoint ce que vous avez écrit sur un PJ (mots en commun). */
+  #pistes(I, texte) {
+    const STOP = new Set(["avoir", "etre", "fait", "faire", "veut", "pour", "dans", "avec", "sans", "elle", "leur", "leurs", "cette", "celui", "comme", "apres", "avant", "depuis", "encore", "toujours", "jamais", "aussi", "entre", "autre", "autres", "parce", "quand", "chercher", "cherche", "trouver", "retrouver", "veulent", "pouvoir", "village", "monde", "temps", "grand", "petit", "jeune", "vieux", "famille", "personne", "quelque", "chose"]);
+    const words = [...new Set(norm(texte).split(" ").filter((w) => w.length >= 5 && !STOP.has(w)))];
+    if (!words.length) return `<p class="flc-hint">Écrivez son passé, ses buts ou ses fils : le module cherchera ce qui y répond dans le livre.</p>`;
+    const cands = [
+      ...I.sites.map((x) => ({ k: `site:${x.id}`, nom: x.nom, type: "Site", txt: [x.nom, x.resume_mj, x.legende], o: x })),
+      ...I.majeurs.map((x) => ({ k: `majeur:${x.id}`, nom: x.nom, type: "Acteur majeur", txt: [x.nom, x.role, x.veut], o: x })),
+      ...I.pnj.map((x) => ({ k: `pnj:${x._key}`, nom: x.nom, type: `PNJ — ${siteName(I, x._site)}`, txt: [x.nom, x.role], o: x })),
+      ...I.artefacts.map((x) => ({ k: null, tab: "artefacts", nom: x.nom, type: "Artefact", txt: [x.nom, x.description_courte, x.pouvoirs], o: x })),
+      ...I.legendes.map((x) => ({ k: null, tab: "legendes", nom: x.titre, type: "Légende", txt: [x.titre, x.sujet], o: x }))];
+    const hits = cands.map((c) => {
+      const nameW = new Set(norm(c.nom).split(" ")), all = new Set(norm(arr(c.txt).flat().filter(Boolean).join(" ")).split(" "));
+      const shared = words.filter((w) => all.has(w)), named = words.filter((w) => nameW.has(w));
+      return { ...c, shared, score: shared.length + named.length * 3 + shared.filter((w) => w.length >= 7).length };
+    }).filter((c) => c.score >= 2).sort((a, b) => b.score - a.score).slice(0, 8);
+    if (!hits.length) return `<p class="flc-hint">Aucun élément du livre ne partage ces mots.</p>`;
+    return `<h4>Pistes dans le livre</h4><p class="flc-hint">Éléments qui partagent des mots avec ce que vous avez écrit — à vous de juger s'ils s'y prêtent.</p><ul class="flc-results">${hits.map((h) =>
+      `<li>${h.k ? `<a data-sel="${h.k}">${esc(h.nom)}</a>` : `<a data-tab-go="${h.tab}">${esc(h.nom)}</a>`}${pageTag(h.o)} <span class="flc-hint">${esc(h.type)} · mots : ${h.shared.map(esc).join(", ")}</span></li>`).join("")}</ul>`;
+  }
+
+  /* ---------- Frise chronologique ---------- */
+  #frise(I, e) {
+    const t = today();
+    const chrono = arr(I.campagne.chronologie);
+    const futur = /pendant|bient[oô]t|f[eê]te|à l.aube|si algarod|si les pj/i;
+    const passe = chrono.filter((c) => !futur.test(c.quand ?? "")), pendant = chrono.filter((c) => futur.test(c.quand ?? ""));
+    const pt = (cls, quand, titre, sous = "", extra = "") => `<li class="flc-fr ${cls}"><span class="flc-fr-dot"></span><div class="flc-fr-when">${quand}</div><div class="flc-fr-what"><b>${titre}</b>${sous ? `<br><span class="flc-hint">${sous}</span>` : ""}${extra}</div></li>`;
+    const pg = (c) => c.page ? ` <span class="flc-page">Corbeau p.&nbsp;${esc(c.page)}</span>` : "";
+    const ev = e.evenements.filter((v) => v.jour != null && v.jour !== "").sort((a, b) => a.jour - b.jour);
+    const avant = ev.filter((v) => v.jour < t.day), apres = ev.filter((v) => v.jour >= t.day);
+    const sessions = e.sessions.map((x) => ({ j: x.jour ?? 0, html: pt("session", esc(x.dateLabel || `Session ${x.numero}`), `Session ${x.numero}${x.titre ? ` — ${esc(x.titre)}` : ""}`, esc(x.lieu ?? "")) }));
+    const vecu = [...sessions, ...avant.map((v) => ({ j: v.jour, html: pt(v.fait ? "fait" : "manque", esc(dayLabel(v.jour)), esc(v.titre), v.fait ? "fait" : "date passée, pas coché") }))].sort((a, b) => a.j - b.j).map((x) => x.html).join("");
+    return `<div class="flc-scroll"><ol class="flc-frise">
+      <li class="flc-fr-sec">Le passé, selon le livre</li>
+      ${passe.map((c) => pt("livre", esc(c.quand ?? ""), esc(c.evenement ?? ""), c.acteur ? esc(personName(I, c.acteur)) : "", pg(c))).join("")}
+      <li class="flc-fr-sec">Votre campagne</li>
+      ${vecu || `<li class="flc-fr-vide flc-hint">Pas encore de session au journal.</li>`}
+      ${pt("now", "Aujourd'hui", esc(t.label || `jour ${t.day}`), e.groupe.site ? `Les PJ sont à ${esc(siteName(I, e.groupe.site))}` : "")}
+      <li class="flc-fr-sec">À venir</li>
+      ${apres.map((v) => pt("futur", esc(dayLabel(v.jour)), esc(v.titre), esc(v.notes ?? ""))).join("") || `<li class="flc-fr-vide flc-hint">Aucun événement daté. Utilisez « Dater » ci-dessous ou dans « Horloges ».</li>`}
+      ${e.horloges.filter((h) => h.rempli < h.segments).map((h) => pt("horloge", `${h.rempli}/${h.segments}`, esc(h.nom), "horloge en cours")).join("")}
+      <li class="flc-fr-sec">Ce qui arrive si les PJ n'agissent pas (livre)</li>
+      ${pendant.map((c, i) => pt("livre-futur", esc(c.quand ?? ""), esc(c.evenement ?? ""), c.acteur ? esc(personName(I, c.acteur)) : "", `${pg(c)} <button type="button" class="flc-small" data-chrono="${chrono.indexOf(c)}">Dater</button>`)).join("")}
+    </ol></div>`;
+  }
+
+  /* ---------- Croyances & vérité, secrets ---------- */
+  #verites(I, e) {
+    const site = this.verSite;
+    const cr = arr(I.c.croyances).filter((c) => !site || c.site === site);
+    const st = e.verites ?? {};
+    const sus = cr.filter((c) => st[c.id]).length;
+    const qui = (c) => arr(c.refs).length ? arr(c.refs).map((r) => { const [ty, ...rest] = r.split(":"); const id = rest.join(":");
+      const o = ty === "majeur" ? I.majeurs.find((a) => a.id === id) : I.pnj.find((p) => p._key === id); return o ? `<a data-sel="${r}">${esc(o.nom.replace(/\s*\(.*\)$/, ""))}</a>` : ""; }).filter(Boolean).join(", ") || esc(c.qui) : esc(c.qui);
+    const sites = I.sites.filter((x) => !site || x.id === site);
+    const secrets = sites.map((x) => {
+      const done = e.sites[x.id]?.secretsSus ?? {};
+      const list = arr(x.secrets_mj);
+      if (!list.length) return "";
+      return `<h4><a data-sel="site:${x.id}">${esc(x.nom)}</a> <span class="flc-hint">${list.filter((_, i) => done[i]).length}/${list.length} découverts</span></h4>
+        ${list.map((txt, i) => `<label class="flc-check flc-secret ${done[i] ? "su" : ""}"><input type="checkbox" data-path="sites.${x.id}.secretsSus.${i}" ${done[i] ? "checked" : ""}> <span>${esc(txt)}</span></label>`).join("")}`;
+    }).join("");
+    const opts = `<option value="">Toute la campagne</option>` + I.sites.map((x) => `<option value="${x.id}"${site === x.id ? " selected" : ""}>${esc(x.nom)}</option>`).join("");
+    return `<div class="flc-scroll"><div class="flc-row"><label>Montrer</label><select data-ver-site>${opts}</select></div>
+      <h3>Ce que l'on croit… et ce qui est vrai <span class="flc-hint">${sus}/${cr.length} percés à jour par les PJ</span></h3>
+      <p class="flc-hint">D'après le livre. Cochez quand les PJ découvrent la vérité : vous voyez quels mensonges tiennent encore.</p>
+      <table class="flc-table flc-ver"><thead><tr><th></th><th>Qui</th><th>Croit ou affirme</th><th>La vérité</th></tr></thead><tbody>
+      ${cr.map((c) => `<tr class="${st[c.id] ? "done" : ""}"><td><input type="checkbox" data-path="verites.${c.id}" ${st[c.id] ? "checked" : ""} data-tooltip="Les PJ savent la vérité"></td>
+        <td>${qui(c)}${c.site ? `<br><span class="flc-hint">${esc(siteName(I, c.site))}</span>` : ""}</td><td class="flc-croit">« ${esc(c.croit)} »</td>
+        <td>${esc(c.verite)}${c.p ? ` <span class="flc-page">${c.l === "GMJ" ? "Guide MJ" : "Corbeau"} p.&nbsp;${esc(c.p)}</span>` : ""}</td></tr>`).join("") || `<tr><td class="flc-hint">Rien pour ce site.</td></tr>`}
+      </tbody></table>
+      <h3>Les secrets des sites — ce que les PJ ont découvert</h3>
+      <p class="flc-hint">Cochez un secret quand les PJ l'apprennent : vous savez ainsi ce que vous pouvez évoquer sans rien dévoiler.</p>
+      ${secrets || "<p class='flc-hint'>—</p>"}</div>`;
   }
 
   /* ---------- Recherche partout ---------- */
@@ -1079,7 +1163,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   }
 
   async #click(ev) {
-    const t = ev.target.closest("[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
+    const t = ev.target.closest("[data-conseil],[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
     if (!t) return;
     if (t.matches("input, select, textarea, label")) return;
     const d = t.dataset;
@@ -1087,6 +1171,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     if (d.official) return this.#official(d.official);
     if (d.rumeur) return this.#rumeur(d.rumeur);
     if (d.print) return printSite(d.print);
+    if (d.conseil) { this._conseil = (this._conseil ?? 0) + 1; return this.render(); }
     if (d.pin) return placePin(d.pin, this);
     if (d.node) { this.sel = d.node; this.tab = "qui"; return this.render(); }
     if (d.sel !== undefined && d.sel) {
@@ -1177,6 +1262,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     if (t.dataset.session) { const s = e.sessions.find((x) => x.id === t.dataset.session); if (s) s.resume = t.value; saveEtat(e); return; }
     if (t.dataset.sessionJ) { const s = e.sessions.find((x) => x.id === t.dataset.sessionJ); if (s) s.resumeJoueurs = t.value; saveEtat(e); return; }
     if (t.dataset.relSite !== undefined) { this.relSite = t.value; return this.render(); }
+    if (t.dataset.verSite !== undefined) { this.verSite = t.value; return this.render(); }
     if (t.dataset.trFiltre !== undefined) { this.trFiltre = t.value; return this.render(); }
     const path = t.dataset.path;
     if (!path) return;

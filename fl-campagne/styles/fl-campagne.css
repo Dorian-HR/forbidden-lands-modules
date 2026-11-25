@@ -183,3 +183,21 @@ details.flc-lieu p { margin-left: 22px; }
 .flc-ctr.done { border-left: 3px solid #4b8a35; }
 .flc-ctr input[type="text"] { width: 100%; margin-top: 4px; }
 .fl-campagne input[type="radio"] { accent-color: var(--flc-accent); flex: none; margin-top: 3px; }
+
+/* frise */
+.flc-frise { list-style: none; margin: 0; padding: 0 0 0 150px; position: relative; }
+.flc-frise::before { content: ""; position: absolute; left: 132px; top: 0; bottom: 0; width: 2px; background: var(--flc-ink); opacity: .35; }
+.flc-fr { position: relative; padding: 4px 0 8px 18px; }
+.flc-fr-dot { position: absolute; left: -24px; top: 9px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--flc-ink); background: #fff; }
+.flc-fr-when { position: absolute; left: -150px; top: 5px; width: 115px; text-align: right; font-size: 12px; color: var(--flc-soft); font-style: italic; line-height: 1.2; }
+.flc-fr.session .flc-fr-dot { background: #4a7fc1; } .flc-fr.fait .flc-fr-dot { background: #4b8a35; } .flc-fr.manque .flc-fr-dot { background: #d8a24a; }
+.flc-fr.now .flc-fr-dot { background: var(--flc-accent); border-color: var(--flc-accent); width: 16px; height: 16px; left: -26px; top: 7px; }
+.flc-fr.now { background: #fbeeea; border-radius: 3px; }
+.flc-fr.futur .flc-fr-dot { background: #fff; border-style: dashed; } .flc-fr.horloge .flc-fr-dot { border-radius: 2px; background: #ecd09a; }
+.flc-fr.livre-futur { opacity: .85; } .flc-fr.livre-futur .flc-fr-dot { background: #ebe8e2; border-style: dotted; }
+.flc-fr-sec { margin: 14px 0 6px -150px; font-family: var(--flc-sc); text-transform: uppercase; letter-spacing: .5px; font-size: 14px; border-bottom: 1px solid var(--flc-line); }
+.flc-fr-vide { padding: 2px 0 8px 18px; }
+/* croyances */
+.flc-ver td.flc-croit { font-style: italic; color: #6d4a07; }
+.fl-campagne .flc-ver tr.done td { opacity: .5; }
+.flc-secret { padding: 3px 0; } .flc-secret.su span { opacity: .5; text-decoration: line-through; }
