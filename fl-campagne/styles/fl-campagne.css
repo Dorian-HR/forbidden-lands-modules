@@ -136,3 +136,37 @@ details.flc-lieu p { margin-left: 22px; }
 .fl-campagne .flc-table .flc-hint { color: var(--flc-soft); }
 .fl-campagne input[type="checkbox"] { accent-color: var(--flc-accent); width: 16px; height: 16px; flex: none; }
 .fl-campagne .flc-filters select, .fl-campagne .flc-filters input { flex: 1 1 180px; width: auto; }
+
+/* relations */
+.flc-graph { width: 100%; height: auto; background: var(--flc-paper2); border: 1px solid var(--flc-line); border-radius: 4px; }
+.flc-edge { stroke-width: 1.6; opacity: .55; }
+.flc-edge.allie { stroke: #4b8a35; } .flc-edge.ennemi { stroke: #a00404; } .flc-edge.mixte { stroke: #c98a1a; stroke-dasharray: 5 3; }
+.flc-node { cursor: pointer; }
+.flc-node circle { stroke: var(--flc-ink); stroke-width: 1.2; fill: #ebe8e2; }
+.flc-node circle.att-hostile, .flc-node circle.att-ennemi { fill: #e3a597; }
+.flc-node circle.att-mefiant { fill: #ecd09a; }
+.flc-node circle.att-amical, .flc-node circle.att-allie { fill: #a9cf97; }
+.flc-node text { font-family: var(--flc-serif); font-size: 12px; fill: var(--flc-ink); paint-order: stroke; stroke: var(--flc-paper2); stroke-width: 3px; }
+.flc-node.dead { opacity: .45; }
+.flc-graph.focus .flc-edge { opacity: .08; } .flc-graph.focus .flc-node { opacity: .25; }
+.flc-graph.focus .flc-edge.hi { opacity: 1; stroke-width: 2.6; } .flc-graph.focus .flc-node.hi { opacity: 1; }
+.flc-legend { margin-left: auto; font-size: 13px; color: var(--flc-soft); }
+.flc-legend .l { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 3px 0 10px; }
+.flc-legend .l.allie { background: #4b8a35; } .flc-legend .l.ennemi { background: #a00404; } .flc-legend .l.mixte { background: #c98a1a; }
+
+/* Vers Vond */
+.flc-assaut { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.flc-total { font-size: 20px; color: var(--flc-accent); margin-left: 4px; }
+.flc-bonus { font-family: var(--flc-sc); font-size: 16px; text-align: right; white-space: nowrap; }
+.fl-campagne .flc-table tr.off td { opacity: .45; }
+.flc-fin { border-bottom: 1px dotted var(--flc-line); padding: 5px 2px; }
+.flc-fin.touche, .flc-touche-ex { background: #fff3d6; }
+.flc-fin.done { opacity: .55; }
+.flc-fin-who { margin-left: 24px !important; font-size: 13px; }
+
+/* dialogues */
+.flc-dlg { font-family: "IM Fell DW Pica", Georgia, serif; font-size: 15px; }
+.flc-dlg .flc-hint { color: #77706a; font-style: italic; font-size: 13px; }
+.flc-dlg .flc-check { display: flex; gap: 6px; align-items: flex-start; margin: 5px 0; }
+.flc-rumeur-txt { font-size: 17px; font-style: italic; margin: 8px 0; }
+.flc-session label.flc-hint { display: block; margin-top: 6px; }

@@ -2,7 +2,7 @@
   "id": "fl-campagne",
   "title": "Forbidden Lands – Suivi de campagne",
   "description": "Tableau du MJ pour suivre et préparer la campagne : qui est où, qui veut quoi, sites et lieux, acteurs majeurs, artefacts, légendes, horloges et événements datés, journal et préparation des sessions. Le contenu de la campagne s'importe depuis un fichier privé (aucun texte des livres dans le module).",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "authors": [{ "name": "Le MJ et Claude" }],
   "compatibility": { "minimum": "13", "verified": "14" },
   "relationships": { "systems": [{ "id": "forbidden-lands", "type": "system" }], "recommends": [{ "id": "fl-temps", "type": "module" }] },
