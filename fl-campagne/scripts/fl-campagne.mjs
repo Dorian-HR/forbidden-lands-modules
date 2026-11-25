@@ -513,7 +513,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
         <select data-filter="attitude">${opt(ATTITUDES, f.attitude, "Toutes attitudes")}</select>
         <select data-filter="vie">${opt(VIE, f.vie, "Morts et vivants")}</select>
       </div>
-      <p class="flc-hint">${list.length} personnage${list.length > 1 ? "s" : ""}. Un clic : la fiche résumée à droite. Un second clic sur le même nom : sa description officielle dans le livre.</p>
+      <p class="flc-hint">${list.length} personnage${list.length > 1 ? "s" : ""}. Cliquez sur un nom pour voir sa fiche ; le bouton « Description officielle » ouvre le livre.</p>
       <table class="flc-table"><thead><tr><th>Qui</th><th>Où maintenant</th><th>Ce qu'il veut</th><th>Envers les PJ</th></tr></thead><tbody>
       ${list.map((r) => `<tr class="${this.sel === r.key ? "sel" : ""} ${r.vie === "mort" ? "dead" : ""}" data-sel="${r.key}">
         <td><b>${esc(r.nom)}</b>${r.majeur ? ` <span class="flc-tag">majeur</span>` : ""}${pageTag(r)}${r.rencontre ? ` <i class="fa-solid fa-eye" data-tooltip="Déjà rencontré par les PJ"></i>` : ""}<br><span class="flc-hint">${esc(r.role ?? "")}</span></td>
@@ -544,7 +544,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const siteOpts = I.sites.map((s) => `<option value="${s.id}"${w.site === s.id ? " selected" : ""}>${esc(s.nom)}</option>`).join("") + `<option value="ailleurs"${w.site === "ailleurs" ? " selected" : ""}>Ailleurs (voir lieu)</option>`;
     const site = I.siteById[p._site];
     return `<div class="flc-fiche">
-      <h2><a data-official="pnj:${k}" data-tooltip="Ouvrir la description officielle du livre">${esc(p.nom)} <i class="fa-solid fa-book-open flc-official-ico"></i></a></h2>
+      <h2>${esc(p.nom)}</h2>
       <p class="flc-sub">${esc([p.peuple, p.role, p.faction].filter(Boolean).join(" · "))}${pageTag(p)}</p>
       <button type="button" class="flc-official" data-official="pnj:${k}"><i class="fa-solid fa-book-open"></i> Description officielle (le livre)</button>
       <div class="flc-key">
@@ -577,7 +577,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const w = whereMajeur(a, e);
     const k = a.id;
     return `<div class="flc-fiche">
-      <h2><a data-official="majeur:${k}" data-tooltip="Ouvrir la description officielle du livre">${esc(a.nom)} <i class="fa-solid fa-book-open flc-official-ico"></i></a> <span class="flc-tag">acteur majeur</span></h2>
+      <h2>${esc(a.nom)} <span class="flc-tag">acteur majeur</span></h2>
       <p class="flc-sub">${esc([a.type === "faction" ? "Faction" : a.peuple, a.role].filter(Boolean).join(" · "))}${pageTag(a)}</p>
       <button type="button" class="flc-official" data-official="majeur:${k}"><i class="fa-solid fa-book-open"></i> Description officielle (le livre)</button>
       <div class="flc-key">
@@ -1175,8 +1175,6 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     if (d.pin) return placePin(d.pin, this);
     if (d.node) { this.sel = d.node; this.tab = "qui"; return this.render(); }
     if (d.sel !== undefined && d.sel) {
-      // deuxième clic sur la personne déjà ouverte : la description officielle
-      if (this.sel === d.sel && /^(pnj|majeur):/.test(d.sel)) return this.#official(d.sel);
       this.sel = d.sel;
       if (d.sel.startsWith("site:") && !["sites", "tableau"].includes(this.tab)) this.tab = "sites";
       else if (d.sel.startsWith("site:") && this.tab === "tableau") this.tab = "sites";
