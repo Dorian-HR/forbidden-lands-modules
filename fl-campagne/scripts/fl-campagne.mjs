@@ -21,6 +21,8 @@ const SITE_STATUS = [
 ];
 const ATTITUDES = [["hostile", "Hostile"], ["mefiant", "Méfiant"], ["neutre", "Neutre"], ["amical", "Amical"], ["allie", "Allié des PJ"], ["ennemi", "Ennemi juré"]];
 const VIE = [["vivant", "Vivant"], ["blesse", "Blessé"], ["captif", "Captif"], ["disparu", "Disparu"], ["mort", "Mort"]];
+/** « Corbeau p. 49 » / « Guide MJ p. 207 » : où lire dans le livre papier ou le PDF. */
+const pageTag = (o) => o?.livre?.p ? ` <span class="flc-page" data-tooltip="Page du livre (papier ou PDF)">${o.livre.l === "GMJ" ? "Guide MJ" : "Corbeau"} p.&nbsp;${esc(o.livre.p)}</span>` : "";
 const lab = (list, k) => list.find(([id]) => id === k)?.[1] ?? k ?? "—";
 const attFromText = (t) => {
   const n = norm(t);
@@ -255,6 +257,89 @@ function lieuBook(s, l) {
 /*  La fenêtre                                   */
 /* -------------------------------------------- */
 
+/* -------------------------------------------- */
+/*  Fiche de préparation imprimable               */
+/* -------------------------------------------- */
+function printSite(siteId) {
+  const I = index(), e = current();
+  const s = I.siteById[siteId];
+  if (!s) return;
+  const st = e.sites[s.id] ?? {};
+  const pg = (o) => o?.livre?.p ? ` <span class="pg">${o.livre.l === "GMJ" ? "Guide MJ" : "Corbeau"} p. ${esc(o.livre.p)}</span>` : "";
+  const ul = (l) => arr(l).filter(Boolean).length ? `<ul>${arr(l).filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "";
+  const ici = I.pnj.filter((p) => wherePnj(p, e).site === s.id && wherePnj(p, e).vie !== "mort");
+  const maj = I.majeurs.filter((a) => arr(a.sites_lies).includes(s.id));
+  const evs = s._ev.filter((v) => !(st.evenementsFaits ?? {})[v.id]);
+  const rums = s._rum.map((r, i) => ({ r, i })).filter(({ i }) => !(st.rumeursDites ?? {})[i]);
+  const ctr = arr(I.c.contradictions).filter((c) => c.site === s.id);
+  const body = `<h1>${esc(s.nom)}${pg(s)}</h1><p class="sub">${esc([s.categorie, s.terrain].filter(Boolean).join(" · "))} — pour les PJ : ${esc(lab(SITE_STATUS, st.statut ?? "inconnu"))}</p>
+    <div class="box"><p><b>En bref.</b> ${esc(s.resume_mj ?? "")}</p>${s.acces ? `<p><b>Comment y aller.</b> ${esc(s.acces)}</p>` : ""}${s.legende ? `<p><b>Légende.</b> ${esc(s.legende)}</p>` : ""}</div>
+    ${arr(s.secrets_mj).length ? `<h2>Secrets</h2>${ul(s.secrets_mj)}` : ""}
+    <h2>Qui est là (${ici.length})</h2>
+    ${maj.length ? `<p><b>Acteurs majeurs liés :</b> ${maj.map((a) => esc(a.nom)).join(", ")}</p>` : ""}
+    ${ici.map((p) => { const w = wherePnj(p, e); return `<div class="pnj"><h3>${esc(p.nom)}${pg(p)}</h3><p class="sub">${esc([p.role, w.lieu].filter(Boolean).join(" — "))} · envers les PJ : ${esc(lab(ATTITUDES, w.attitude))}${w.vie !== "vivant" ? ` · ${esc(lab(VIE, w.vie))}` : ""}</p>
+      ${arr(p.veut).length ? `<p><b>Veut :</b> ${esc(arr(p.veut).join(" ; "))}</p>` : ""}${arr(p.sait).length ? `<p><b>Sait :</b> ${esc(arr(p.sait).join(" ; "))}</p>` : ""}${w.notes ? `<p><b>Vos notes :</b> ${esc(w.notes)}</p>` : ""}</div>`; }).join("")}
+    <h2>Lieux</h2>${arr(s.lieux).map((l) => `<div class="lieu"><h3>${esc(l.id)}. ${esc(l.nom)}${pg(l)}${(st.lieuxVisites ?? {})[l.id] ? " <i>(visité)</i>" : ""}</h3><p>${esc(l.resume ?? "")}</p>${l.tresor ? `<p><b>Trésor :</b> ${esc(l.tresor)}${(st.tresorsPris ?? {})[l.id] ? " <i>(pris)</i>" : ""}</p>` : ""}</div>`).join("")}
+    ${evs.length ? `<h2>Événements pas encore joués</h2>${evs.map((v) => `<div class="lieu"><h3>${esc(v.titre)}${pg(v)}</h3>${v.declencheur ? `<p><b>Quand :</b> ${esc(v.declencheur)}</p>` : ""}<p>${esc(v.resume ?? "")}</p>${v.consequences ? `<p><b>Ensuite :</b> ${esc(v.consequences)}</p>` : ""}</div>`).join("")}` : ""}
+    ${rums.length ? `<h2>Rumeurs pas encore dites</h2><ul>${rums.map(({ r }) => `<li>« ${esc(r.texte)} » <i>(${r.vraie === true ? "vraie" : r.vraie === false ? "fausse" : "non tranchée"})</i></li>`).join("")}</ul>` : ""}
+    ${ctr.length ? `<h2>Points flous du livre</h2><ul>${ctr.map((c) => { const ch = e.contradictions?.[c.id]?.choix; return `<li><b>${esc(c.sujet)}</b> : ${ch != null && c.versions[ch] ? `votre choix — ${esc(c.versions[ch].texte)}` : c.versions.map((v) => esc(v.texte)).join(" / ")}</li>`; }).join("")}</ul>` : ""}
+    ${st.notes ? `<h2>Vos notes</h2><p>${esc(st.notes).replace(/\n/g, "<br>")}</p>` : ""}`;
+  const css = `body{font-family:"IM Fell DW Pica",Georgia,serif;color:#222;font-size:11pt;margin:14mm}h1{font-size:22pt;margin:0}h2{font-size:14pt;border-bottom:1px solid #222;margin:14px 0 4px;text-transform:uppercase;letter-spacing:.5px}
+    h3{font-size:12pt;margin:8px 0 2px}p{margin:2px 0}.sub{color:#666;font-style:italic}.pg{font-size:8.5pt;color:#a00404;border:1px solid #a00404;border-radius:3px;padding:0 3px;font-style:normal;font-weight:normal;margin-left:4px}
+    .box{border-left:3px solid #222;padding:4px 10px;margin:8px 0;background:#f7f4ee}.pnj,.lieu{break-inside:avoid;margin-bottom:4px}ul{margin:2px 0;padding-left:18px}`;
+  const f = document.createElement("iframe");
+  f.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  document.body.appendChild(f);
+  const d = f.contentDocument;
+  d.open(); d.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.nom)} — préparation</title><style>${css}</style></head><body>${body}</body></html>`); d.close();
+  setTimeout(() => { f.contentWindow.focus(); f.contentWindow.print(); setTimeout(() => f.remove(), 120000); }, 300);
+  ui.notifications.info("Fenêtre d'impression : choisissez « Enregistrer au format PDF » pour en faire un PDF.");
+}
+
+/* -------------------------------------------- */
+/*  Épingles des sites sur la carte                */
+/* -------------------------------------------- */
+const PIN_TINT = { inconnu: "#9e9a94", rumeur: "#d8a24a", visite: "#4a7fc1", explore: "#4b8a35", conquis: "#a00404" };
+const pinIcon = (s) => /ch[aâ]teau/i.test(s?.categorie ?? "") ? "icons/svg/castle.svg" : /donjon/i.test(s?.categorie ?? "") ? "icons/svg/cave.svg" : "icons/svg/village.svg";
+async function sitesJournal() {
+  const I = index();
+  let j = game.journal.find((x) => x.getFlag(MOD, "sites"));
+  if (!j) j = await JournalEntry.create({ name: "Sites de la campagne (MJ)", ownership: { default: CONST.DOCUMENT_OWNERSHIP_LEVELS.NONE }, flags: { [MOD]: { sites: true } } });
+  const missing = I.sites.filter((s) => !j.pages.find((p) => p.getFlag(MOD, "site") === s.id));
+  if (missing.length) await j.createEmbeddedDocuments("JournalEntryPage", missing.map((s) => ({ name: s.nom, type: "text", text: { content: "<p>Site de la campagne : ouvrez le suivi de campagne (Alt+C) ou cliquez sur l'épingle.</p>" }, flags: { [MOD]: { site: s.id } } })));
+  return j;
+}
+async function placePin(siteId, app) {
+  const I = index();
+  const s = I.siteById[siteId];
+  if (!canvas?.ready || !canvas.scene) return ui.notifications.warn("Ouvrez d'abord la scène de votre carte.");
+  ui.notifications.info(`Cliquez sur la carte à l'emplacement de « ${s.nom} » (Échap pour annuler).`);
+  await app?.minimize?.();
+  const pos = await new Promise((res) => {
+    const done = (v) => { canvas.stage.off("pointerdown", onDown); document.removeEventListener("keydown", onKey); res(v); };
+    const onDown = (ev) => done(ev.getLocalPosition ? ev.getLocalPosition(canvas.stage) : ev.data?.getLocalPosition(canvas.stage));
+    const onKey = (ev) => { if (ev.key === "Escape") done(null); };
+    canvas.stage.on("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+  });
+  await app?.maximize?.();
+  if (!pos) return;
+  const j = await sitesJournal();
+  const page = j.pages.find((p) => p.getFlag(MOD, "site") === siteId);
+  const statut = current().sites[siteId]?.statut ?? "inconnu";
+  for (const old of canvas.scene.notes.filter((n) => n.getFlag(MOD, "site") === siteId)) await old.delete();
+  await canvas.scene.createEmbeddedDocuments("Note", [{ x: Math.round(pos.x), y: Math.round(pos.y), entryId: j.id, pageId: page?.id, text: s.nom,
+    texture: { src: pinIcon(s), tint: PIN_TINT[statut] }, iconSize: 40, fontSize: 22, flags: { [MOD]: { site: siteId } } }]);
+  ui.notifications.info(`« ${s.nom} » épinglé. Sa couleur suit ce que savent les PJ ; un clic ouvre sa fiche.`);
+}
+async function updatePins(siteId, statut) {
+  if (!game.user.isGM) return;
+  for (const scene of game.scenes) {
+    const upd = scene.notes.filter((n) => n.getFlag(MOD, "site") === siteId).map((n) => ({ _id: n.id, "texture.tint": PIN_TINT[statut] ?? PIN_TINT.inconnu }));
+    if (upd.length) await scene.updateEmbeddedDocuments("Note", upd);
+  }
+}
+
 /** Demande un jour du calendrier : dans N jours, ou à une date précise (fl-temps). Renvoie le numéro de jour. */
 async function askDay(titre, indication) {
   const t = today();
@@ -296,7 +381,7 @@ async function checkRappels() {
 
 const TABS = [
   ["tableau", "Tableau", "fa-solid fa-chess-rook"], ["qui", "Qui est où", "fa-solid fa-users"], ["sites", "Sites", "fa-solid fa-map-location-dot"],
-  ["acteurs", "Acteurs majeurs", "fa-solid fa-crown"], ["relations", "Relations", "fa-solid fa-diagram-project"], ["vond", "Vers Vond", "fa-solid fa-chess-king"], ["artefacts", "Artefacts", "fa-solid fa-gem"], ["legendes", "Légendes", "fa-solid fa-scroll"],
+  ["acteurs", "Acteurs majeurs", "fa-solid fa-crown"], ["relations", "Relations", "fa-solid fa-diagram-project"], ["vond", "Vers Vond", "fa-solid fa-chess-king"], ["artefacts", "Artefacts", "fa-solid fa-gem"], ["tresors", "Trésors", "fa-solid fa-coins"], ["contradictions", "Points flous", "fa-solid fa-scale-balanced"], ["legendes", "Légendes", "fa-solid fa-scroll"],
   ["temps", "Horloges & événements", "fa-solid fa-hourglass-half"], ["sessions", "Sessions", "fa-solid fa-book-open"], ["pj", "Les PJ", "fa-solid fa-user-shield"]
 ];
 
@@ -310,15 +395,17 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   sel = null;           // élément ouvert dans le panneau de droite
   filtre = { texte: "", site: "", attitude: "", vie: "" };
   relSite = "";
+  q = "";
+  trFiltre = "restants";
 
   async _renderHTML() {
     const I = index();
     const e = current();
     if (!I.sites.length && !I.majeurs.length) return this.#empty();
     const nav = TABS.map(([id, label, icon]) => `<a class="flc-tab${this.tab === id ? " active" : ""}" data-tab="${id}"><i class="${icon}"></i> ${label}</a>`).join("");
-    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e),
+    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
       artefacts: () => this.#artefacts(I, e), legendes: () => this.#legendes(I, e), temps: () => this.#temps(I, e), sessions: () => this.#sessions(I, e), pj: () => this.#pj(I, e) })[this.tab]();
-    return `<nav class="flc-nav">${nav}</nav><section class="flc-body">${body}</section>`;
+    return `<nav class="flc-nav">${nav}<input type="search" class="flc-search" placeholder="Rechercher partout…" value="${esc(this.q)}" data-q></nav><section class="flc-body">${body}</section>`;
   }
   _replaceHTML(html, content) {
     const scroll = content.querySelector(".flc-scroll")?.scrollTop ?? 0;
@@ -326,6 +413,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     content.innerHTML = html;
     const a = content.querySelector(".flc-scroll"); if (a) a.scrollTop = scroll;
     const b = content.querySelector(".flc-detail"); if (b) b.scrollTop = scroll2;
+    if (this.tab === "recherche") { const q = content.querySelector("[data-q]"); if (q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); } }
   }
 
   #empty() {
@@ -403,11 +491,11 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const rows = [];
     for (const a of I.majeurs) {
       const w = whereMajeur(a, e);
-      rows.push({ key: `majeur:${a.id}`, nom: a.nom, role: a.role, majeur: true, site: "", ou: w.ou, veut: arr(a.veut)[0] ?? "", attitude: w.relation, vie: w.vie, rencontre: w.rencontre });
+      rows.push({ key: `majeur:${a.id}`, livre: a.livre, nom: a.nom, role: a.role, majeur: true, site: "", ou: w.ou, veut: arr(a.veut)[0] ?? "", attitude: w.relation, vie: w.vie, rencontre: w.rencontre });
     }
     for (const p of I.pnj) {
       const w = wherePnj(p, e);
-      rows.push({ key: `pnj:${p._key}`, nom: p.nom, role: p.role, majeur: !!p.majeur, site: w.site, ou: `${siteName(I, w.site)}${w.lieu ? ` — ${w.lieu}` : ""}`, veut: arr(p.veut)[0] ?? "", attitude: w.attitude, vie: w.vie, rencontre: w.rencontre });
+      rows.push({ key: `pnj:${p._key}`, livre: p.livre, nom: p.nom, role: p.role, majeur: !!p.majeur, site: w.site, ou: `${siteName(I, w.site)}${w.lieu ? ` — ${w.lieu}` : ""}`, veut: arr(p.veut)[0] ?? "", attitude: w.attitude, vie: w.vie, rencontre: w.rencontre });
     }
     const t = norm(f.texte);
     const list = rows.filter((r) => (!t || norm(`${r.nom} ${r.role} ${r.ou} ${r.veut}`).includes(t)) && (!f.site || r.site === f.site || (r.majeur && norm(r.ou).includes(norm(siteName(I, f.site)))))
@@ -423,7 +511,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       <p class="flc-hint">${list.length} personnage${list.length > 1 ? "s" : ""}. Un clic : la fiche résumée à droite. Un second clic sur le même nom : sa description officielle dans le livre.</p>
       <table class="flc-table"><thead><tr><th>Qui</th><th>Où maintenant</th><th>Ce qu'il veut</th><th>Envers les PJ</th></tr></thead><tbody>
       ${list.map((r) => `<tr class="${this.sel === r.key ? "sel" : ""} ${r.vie === "mort" ? "dead" : ""}" data-sel="${r.key}">
-        <td><b>${esc(r.nom)}</b>${r.majeur ? ` <span class="flc-tag">majeur</span>` : ""}${r.rencontre ? ` <i class="fa-solid fa-eye" data-tooltip="Déjà rencontré par les PJ"></i>` : ""}<br><span class="flc-hint">${esc(r.role ?? "")}</span></td>
+        <td><b>${esc(r.nom)}</b>${r.majeur ? ` <span class="flc-tag">majeur</span>` : ""}${pageTag(r)}${r.rencontre ? ` <i class="fa-solid fa-eye" data-tooltip="Déjà rencontré par les PJ"></i>` : ""}<br><span class="flc-hint">${esc(r.role ?? "")}</span></td>
         <td>${esc(r.ou)}${r.vie !== "vivant" ? `<br><span class="flc-tag ${r.vie}">${lab(VIE, r.vie)}</span>` : ""}</td>
         <td>${esc(r.veut)}</td><td><span class="flc-att ${r.attitude}">${lab(ATTITUDES, r.attitude)}</span></td></tr>`).join("")}
       </tbody></table></div>
@@ -452,7 +540,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const site = I.siteById[p._site];
     return `<div class="flc-fiche">
       <h2><a data-official="pnj:${k}" data-tooltip="Ouvrir la description officielle du livre">${esc(p.nom)} <i class="fa-solid fa-book-open flc-official-ico"></i></a></h2>
-      <p class="flc-sub">${esc([p.peuple, p.role, p.faction].filter(Boolean).join(" · "))}</p>
+      <p class="flc-sub">${esc([p.peuple, p.role, p.faction].filter(Boolean).join(" · "))}${pageTag(p)}</p>
       <button type="button" class="flc-official" data-official="pnj:${k}"><i class="fa-solid fa-book-open"></i> Description officielle (le livre)</button>
       <div class="flc-key">
         <p><span>Où</span> ${esc(siteName(I, w.site))}${w.lieu ? ` — ${esc(w.lieu)}` : ""}</p>
@@ -485,7 +573,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const k = a.id;
     return `<div class="flc-fiche">
       <h2><a data-official="majeur:${k}" data-tooltip="Ouvrir la description officielle du livre">${esc(a.nom)} <i class="fa-solid fa-book-open flc-official-ico"></i></a> <span class="flc-tag">acteur majeur</span></h2>
-      <p class="flc-sub">${esc([a.type === "faction" ? "Faction" : a.peuple, a.role].filter(Boolean).join(" · "))}</p>
+      <p class="flc-sub">${esc([a.type === "faction" ? "Faction" : a.peuple, a.role].filter(Boolean).join(" · "))}${pageTag(a)}</p>
       <button type="button" class="flc-official" data-official="majeur:${k}"><i class="fa-solid fa-book-open"></i> Description officielle (le livre)</button>
       <div class="flc-key">
         <p><span>Où</span> ${esc(w.ou || "—")}</p>
@@ -520,7 +608,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const list = I.sites.map((s) => {
       const st = e.sites[s.id]?.statut ?? "inconnu";
       const n = I.pnj.filter((p) => wherePnj(p, e).site === s.id && wherePnj(p, e).vie !== "mort").length;
-      return `<tr class="${this.sel === `site:${s.id}` ? "sel" : ""}" data-sel="site:${s.id}"><td><b>${esc(s.nom)}</b><br><span class="flc-hint">${esc(s.categorie ?? "")}${s.terrain ? ` · ${esc(s.terrain)}` : ""}</span></td>
+      return `<tr class="${this.sel === `site:${s.id}` ? "sel" : ""}" data-sel="site:${s.id}"><td><b>${esc(s.nom)}</b>${pageTag(s)}<br><span class="flc-hint">${esc(s.categorie ?? "")}${s.terrain ? ` · ${esc(s.terrain)}` : ""}</span></td>
         <td><span class="flc-status ${st}">${lab(SITE_STATUS, st)}</span></td><td>${n}</td></tr>`;
     }).join("");
     return `<div class="flc-split"><div class="flc-scroll">
@@ -541,7 +629,9 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const majeurs = I.majeurs.filter((a) => arr(a.sites_lies).includes(s.id));
     return `<div class="flc-fiche">
       <h2>${esc(s.nom)}</h2>
-      <p class="flc-sub">${esc([s.categorie, s.terrain].filter(Boolean).join(" · "))}</p>
+      <p class="flc-sub">${esc([s.categorie, s.terrain].filter(Boolean).join(" · "))}${pageTag(s)}</p>
+      <div class="flc-buttons"><button type="button" data-print="${s.id}"><i class="fa-solid fa-print"></i> Fiche de préparation (imprimer / PDF)</button>
+        <button type="button" data-pin="${s.id}"><i class="fa-solid fa-location-dot"></i> Placer sur la carte</button></div>
       <div class="flc-edit flc-inline">
         <label>Pour les PJ <select data-path="sites.${k}.statut">${SITE_STATUS.map(([v, l]) => `<option value="${v}"${(st.statut ?? "inconnu") === v ? " selected" : ""}>${l}</option>`).join("")}</select></label>
         <label>Hexagone <input type="text" value="${esc(st.hex ?? "")}" data-path="sites.${k}.hex" placeholder="ex. N12"></label>
@@ -559,18 +649,21 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       ${venus.length ? `<p class="flc-hint">Arrivés d'ailleurs : ${venus.map((p) => esc(p.nom)).join(", ")}</p>` : ""}
       ${partis.length ? `<p class="flc-hint">Partis d'ici : ${partis.map((p) => `${esc(p.nom)} (→ ${esc(siteName(I, wherePnj(p, e).site))})`).join(", ")}</p>` : ""}
       <h4>Lieux (${arr(s.lieux).length})</h4>
-      ${arr(s.lieux).map((l) => `<details class="flc-lieu"><summary><label class="flc-check" onclick="event.stopPropagation()"><input type="checkbox" data-path="sites.${k}.lieuxVisites.${esc(l.id)}" ${vus[l.id] ? "checked" : ""}></label> <b>${esc(l.id)}. ${esc(l.nom)}</b></summary>
+      ${arr(s.lieux).map((l) => `<details class="flc-lieu"><summary><label class="flc-check" onclick="event.stopPropagation()"><input type="checkbox" data-path="sites.${k}.lieuxVisites.${esc(l.id)}" ${vus[l.id] ? "checked" : ""}></label> <b>${esc(l.id)}. ${esc(l.nom)}</b>${pageTag(l)}${l.tresor && (e.sites[s.id]?.tresorsPris ?? {})[l.id] ? ` <span class="flc-tag">trésor pris</span>` : ""}</summary>
         <p>${esc(l.resume ?? "")}</p>
         ${arr(l.pnj).length ? `<p><span class="flc-hint">PNJ :</span> ${arr(l.pnj).map((x) => esc(personName(I, x))).join(", ")}</p>` : ""}
         ${l.tresor ? `<p><span class="flc-hint">Trésor :</span> ${esc(l.tresor)}</p>` : ""}
         ${l.page_en || l.page_fr ? (() => { const b = lieuBook(s, l); return `<button type="button" class="flc-small" data-book="${esc(b.journals.join("|"))}" data-page="${esc(b.pages.join("|"))}"><i class="fa-solid fa-book"></i> Lire dans le livre</button>`; })() : ""}
       </details>`).join("")}
       <h4>Événements</h4>
-      ${arr(s._ev).map((v) => `<details class="flc-lieu"><summary><label class="flc-check" onclick="event.stopPropagation()"><input type="checkbox" data-path="sites.${k}.evenementsFaits.${esc(v.id)}" ${faits[v.id] ? "checked" : ""}></label> <b>${esc(v.titre)}</b></summary>
+      ${arr(s._ev).map((v) => `<details class="flc-lieu"><summary><label class="flc-check" onclick="event.stopPropagation()"><input type="checkbox" data-path="sites.${k}.evenementsFaits.${esc(v.id)}" ${faits[v.id] ? "checked" : ""}></label> <b>${esc(v.titre)}</b>${pageTag(v)}</summary>
         ${v.declencheur ? `<p><span class="flc-hint">Quand :</span> ${esc(v.declencheur)}</p>` : ""}<p>${esc(v.resume ?? "")}</p>${v.consequences ? `<p><span class="flc-hint">Ensuite :</span> ${esc(v.consequences)}</p>` : ""}</details>`).join("") || "<p class='flc-hint'>—</p>"}
       <h4>Rumeurs à glisser <button type="button" class="flc-small" data-rumeur="${s.id}"><i class="fa-solid fa-dice"></i> Tirer une rumeur</button></h4>
       ${arr(s._rum).map((r, i) => `<label class="flc-check flc-rumeur"><input type="checkbox" data-path="sites.${k}.rumeursDites.${i}" ${dites[i] ? "checked" : ""}> ${esc(r.texte)} ${r.vraie === false ? `<span class="flc-tag faux">fausse</span>` : ""}${r.menant_a ? ` <span class="flc-hint">→ ${esc(I.siteById[r.menant_a]?.nom ?? s._pnj.find((p) => p.id === r.menant_a)?.nom ?? personName(I, r.menant_a))}</span>` : ""}</label>`).join("") || "<p class='flc-hint'>—</p>"}
       ${arr(s.liens).length ? `<h4>Liens avec le reste de la campagne</h4><ul>${arr(s.liens).map((l) => `<li><a data-sel="${I.siteById[l.vers] ? `site:${l.vers}` : I.majeurs.find((a) => a.id === l.vers) ? `majeur:${l.vers}` : ""}">${esc(siteName(I, l.vers) !== l.vers ? siteName(I, l.vers) : personName(I, l.vers))}</a> : ${esc(l.pourquoi)}</li>`).join("")}</ul>` : ""}
+      ${(() => { const cs = arr(I.c.contradictions).filter((c) => c.site === s.id); if (!cs.length) return "";
+        return `<h4>Points flous du livre (${cs.length})</h4><ul>${cs.map((c) => { const ch = e.contradictions?.[c.id]?.choix;
+          return `<li>${esc(c.sujet)} — ${ch != null && c.versions[ch] ? `<b>votre choix :</b> ${esc(c.versions[ch].texte)}` : `<a data-tab-go="contradictions">à trancher</a>`}</li>`; }).join("")}</ul>`; })()}
       <h4>Vos notes</h4><textarea data-path="sites.${k}.notes" rows="4">${esc(st.notes ?? "")}</textarea>
       <div class="flc-buttons"><button type="button" data-book="${esc(s.journal_en)}|${esc(s.journal_fr)}"><i class="fa-solid fa-book"></i> Ouvrir le site dans le livre</button></div>
     </div>`;
@@ -592,7 +685,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   #artefacts(I, e) {
     return `<div class="flc-scroll flc-cards">${I.artefacts.map((a) => {
       const s = e.artefacts[a.id] ?? {};
-      return `<div class="flc-card flc-wide2"><h3>${esc(a.nom)}</h3><p>${esc(a.description_courte ?? "")}</p>
+      return `<div class="flc-card flc-wide2"><h3>${esc(a.nom)}${pageTag(a)}</h3><p>${esc(a.description_courte ?? "")}</p>
         ${arr(a.pouvoirs).length ? `<h4>Pouvoirs</h4>${this.#bullets(a.pouvoirs)}` : ""}
         <p><b>Dans le livre :</b> ${esc(a.emplacement_par_defaut ?? "—")}</p>
         <p><b>Qui le cherche :</b> ${this.#people(I, a.qui_le_cherche)}</p>
@@ -612,7 +705,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       <p class="flc-hint">Le livre conseille de présenter <b>une légende par session</b> : c'est ainsi que les joueurs apprennent ce qui se joue. Cochez-les au fur et à mesure.</p>
       <table class="flc-table"><thead><tr><th></th><th>Légende</th><th>Sujet</th><th></th></tr></thead><tbody>
       ${I.legendes.map((l, i) => { const s = e.legendes[i] ?? {}; return `<tr class="${s.lue ? "done" : ""}"><td><input type="checkbox" data-path="legendes.${i}.lue" ${s.lue ? "checked" : ""}></td>
-        <td><b>${esc(l.titre)}</b></td><td>${esc(l.sujet ?? "")}<br><span class="flc-hint">${esc(l.site_ou_acteur ?? "")}</span></td>
+        <td><b>${esc(l.titre)}</b>${pageTag(l)}</td><td>${esc(l.sujet ?? "")}<br><span class="flc-hint">${esc(l.site_ou_acteur ?? "")}</span></td>
         <td class="flc-nowrap">${l.journal_en ? `<button type="button" class="flc-small" data-book="${esc(l.journal_en)}|${esc(l.journal_fr ?? "")}" data-page="${esc(l.page_en ?? "")}|${esc(l.page_fr ?? "")}">Lire</button>
           <button type="button" class="flc-small" data-show="${esc(l.journal_en)}|${esc(l.journal_fr ?? "")}" data-page="${esc(l.page_en ?? "")}|${esc(l.page_fr ?? "")}">Montrer aux joueurs</button>` : ""}</td></tr>`; }).join("")}
       </tbody></table></div>`;
@@ -723,8 +816,62 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     });
     el.addEventListener("input", (ev) => {
       const t = ev.target;
+      if (t.dataset.q !== undefined) { this.q = t.value; clearTimeout(this._fq); this._fq = setTimeout(() => { if (this.q.trim().length >= 2) this.tab = "recherche"; this.render(); }, 250); return; }
       if (t.dataset.filter === "texte") { this.filtre.texte = t.value; clearTimeout(this._ft); this._ft = setTimeout(() => this.render(), 250); }
     });
+  }
+
+  /* ---------- Recherche partout ---------- */
+  #recherche(I, e) {
+    const q = norm(this.q);
+    if (q.length < 2) return `<div class="flc-scroll"><p class="flc-hint">Tapez au moins deux lettres dans « Rechercher partout ».</p></div>`;
+    const has = (...t) => norm(t.flat().filter(Boolean).join(" ")).includes(q);
+    const G = [];
+    const add = (titre, items) => { if (items.length) G.push(`<h3>${titre} (${items.length})</h3><ul class="flc-results">${items.slice(0, 40).join("")}</ul>${items.length > 40 ? `<p class="flc-hint">… et ${items.length - 40} autres : précisez la recherche.</p>` : ""}`); };
+    add("Personnages", [
+      ...I.majeurs.filter((a) => has(a.nom, a.role, a.veut, a.ou_au_debut)).map((a) => `<li><a data-sel="majeur:${a.id}">${esc(a.nom)}</a> <span class="flc-tag">majeur</span>${pageTag(a)} <span class="flc-hint">${esc(a.role ?? "")}</span></li>`),
+      ...I.pnj.filter((p) => has(p.nom, p.role, p.veut, p.lieu)).map((p) => `<li><a data-sel="pnj:${p._key}">${esc(p.nom)}</a>${pageTag(p)} <span class="flc-hint">${esc(siteName(I, p._site))} — ${esc(p.role ?? "")}</span></li>`)]);
+    add("Sites", I.sites.filter((s) => has(s.nom, s.resume_mj, s.terrain)).map((s) => `<li><a data-sel="site:${s.id}">${esc(s.nom)}</a>${pageTag(s)}</li>`));
+    add("Lieux", I.sites.flatMap((s) => arr(s.lieux).filter((l) => has(l.nom, l.resume, l.tresor)).map((l) => `<li><a data-sel="site:${s.id}">${esc(s.nom)} — ${esc(l.id)}. ${esc(l.nom)}</a>${pageTag(l)}</li>`)));
+    add("Événements", I.sites.flatMap((s) => s._ev.filter((v) => has(v.titre, v.resume, v.declencheur, v.consequences)).map((v) => `<li><a data-sel="site:${s.id}">${esc(s.nom)} — ${esc(v.titre)}</a>${pageTag(v)}</li>`)));
+    add("Rumeurs", I.sites.flatMap((s) => s._rum.filter((r) => has(r.texte)).map((r) => `<li><a data-sel="site:${s.id}">${esc(s.nom)}</a> : « ${esc(r.texte)} »</li>`)));
+    add("Artefacts", I.artefacts.filter((a) => has(a.nom, a.description_courte, a.pouvoirs, a.emplacement_par_defaut)).map((a) => `<li><a data-tab-go="artefacts">${esc(a.nom)}</a>${pageTag(a)}</li>`));
+    add("Légendes", I.legendes.filter((l) => has(l.titre, l.sujet)).map((l) => `<li><a data-tab-go="legendes">${esc(l.titre)}</a>${pageTag(l)}</li>`));
+    add("Points flous du livre", arr(I.c.contradictions).filter((c) => has(c.sujet, c.versions.map((v) => v.texte))).map((c) => `<li><a data-tab-go="contradictions">${esc(c.sujet)}</a> <span class="flc-hint">${esc(siteName(I, c.site))}</span></li>`));
+    return `<div class="flc-scroll"><p class="flc-hint">Résultats pour « ${esc(this.q)} ». Cliquez pour ouvrir.</p>${G.join("") || "<p>Rien trouvé.</p>"}</div>`;
+  }
+
+  /* ---------- Trésors ---------- */
+  #tresors(I, e) {
+    const vide = (t) => !t || /^(aucun|rien|néant|—|-)\b/i.test(String(t).trim());
+    let total = 0, pris = 0;
+    const blocs = I.sites.map((s) => {
+      const lieux = arr(s.lieux).filter((l) => !vide(l.tresor));
+      const done = e.sites[s.id]?.tresorsPris ?? {};
+      total += lieux.length; pris += lieux.filter((l) => done[l.id]).length;
+      const rows = lieux.filter((l) => this.trFiltre === "tous" || !done[l.id]).map((l) => `<tr class="${done[l.id] ? "done" : ""}"><td><input type="checkbox" data-path="sites.${s.id}.tresorsPris.${l.id}" ${done[l.id] ? "checked" : ""}></td>
+        <td><b>${esc(l.id)}. ${esc(l.nom)}</b>${pageTag(l)}</td><td>${esc(l.tresor)}</td></tr>`).join("");
+      return rows ? `<h3><a data-sel="site:${s.id}">${esc(s.nom)}</a> <span class="flc-hint">${lieux.filter((l) => done[l.id]).length}/${lieux.length} récupérés</span></h3><table class="flc-table"><tbody>${rows}</tbody></table>` : "";
+    }).join("");
+    return `<div class="flc-scroll"><div class="flc-row"><label>Montrer</label><select data-tr-filtre><option value="restants"${this.trFiltre === "restants" ? " selected" : ""}>Les trésors encore en place</option><option value="tous"${this.trFiltre === "tous" ? " selected" : ""}>Tous les trésors</option></select>
+      <span class="flc-hint">${pris} récupérés sur ${total}. Cochez quand les PJ prennent un trésor. Les artefacts ont leur propre onglet.</span></div>${blocs || "<p class='flc-hint'>Rien à montrer.</p>"}</div>`;
+  }
+
+  /* ---------- Points flous du livre ---------- */
+  #contradictions(I, e) {
+    const list = arr(I.c.contradictions);
+    if (!list.length) return `<div class="flc-scroll"><p class="flc-hint">Importez la dernière version du fichier de campagne.</p></div>`;
+    const bySite = {};
+    for (const c of list) (bySite[c.site ?? "_"] ??= []).push(c);
+    const order = [...I.sites.map((s) => s.id), "_"];
+    const tranches = list.filter((c) => e.contradictions?.[c.id]?.choix != null).length;
+    return `<div class="flc-scroll"><p class="flc-hint">Les endroits où le livre se contredit ou reste flou, relevés pendant la vérification contre les PDF. Choisissez la version que vous gardez : votre choix s'affiche ensuite dans la fiche du site. ${tranches}/${list.length} tranchés.</p>
+      ${order.filter((k) => bySite[k]).map((k) => `<h3>${k === "_" ? "Toute la campagne" : `<a data-sel="site:${k}">${esc(siteName(I, k))}</a>`}</h3>${bySite[k].map((c) => {
+        const st = e.contradictions?.[c.id] ?? {};
+        return `<div class="flc-card flc-ctr ${st.choix != null ? "done" : ""}"><b>${esc(c.sujet)}</b>
+          ${c.versions.map((v, i) => `<label class="flc-check"><input type="radio" name="ctr-${c.id}" value="${i}" data-path="contradictions.${c.id}.choix" ${String(st.choix) === String(i) ? "checked" : ""}> <span>${esc(v.texte)} ${v.p ? `<span class="flc-page">${v.l === "GMJ" ? "Guide MJ" : "Corbeau"} p.&nbsp;${esc(v.p)}</span>` : ""}</span></label>`).join("")}
+          <input type="text" placeholder="Votre décision ou note…" value="${esc(st.note ?? "")}" data-path="contradictions.${c.id}.note"></div>`;
+      }).join("")}`).join("")}</div>`;
   }
 
   /* ---------- Relations ---------- */
@@ -932,13 +1079,15 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   }
 
   async #click(ev) {
-    const t = ev.target.closest("[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
+    const t = ev.target.closest("[data-print],[data-pin],[data-rumeur],[data-node],[data-official],[data-tab],[data-tab-go],[data-sel],[data-act],[data-book],[data-show],[data-actor],[data-clock] span,[data-del-clock],[data-del-ev],[data-chrono]");
     if (!t) return;
     if (t.matches("input, select, textarea, label")) return;
     const d = t.dataset;
-    if (d.tab || d.tabGo) { this.tab = d.tab ?? d.tabGo; this.sel = null; return this.render(); }
+    if (d.tab || d.tabGo) { this.tab = d.tab ?? d.tabGo; this.sel = null; if (this.tab !== "recherche") this.q = ""; return this.render(); }
     if (d.official) return this.#official(d.official);
     if (d.rumeur) return this.#rumeur(d.rumeur);
+    if (d.print) return printSite(d.print);
+    if (d.pin) return placePin(d.pin, this);
     if (d.node) { this.sel = d.node; this.tab = "qui"; return this.render(); }
     if (d.sel !== undefined && d.sel) {
       // deuxième clic sur la personne déjà ouverte : la description officielle
@@ -1028,13 +1177,15 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     if (t.dataset.session) { const s = e.sessions.find((x) => x.id === t.dataset.session); if (s) s.resume = t.value; saveEtat(e); return; }
     if (t.dataset.sessionJ) { const s = e.sessions.find((x) => x.id === t.dataset.sessionJ); if (s) s.resumeJoueurs = t.value; saveEtat(e); return; }
     if (t.dataset.relSite !== undefined) { this.relSite = t.value; return this.render(); }
+    if (t.dataset.trFiltre !== undefined) { this.trFiltre = t.value; return this.render(); }
     const path = t.dataset.path;
     if (!path) return;
     const value = t.type === "checkbox" ? t.checked : t.value;
     foundry.utils.setProperty(e, path, value);
     saveEtat(e);
     // Ces changements modifient d'autres parties de l'affichage : on redessine
-    if (/\.(site|attitude|vie|relation|statut|rencontre|lue)$|^groupe\.site$|^legendes\./.test(path) || t.type === "checkbox" || t.tagName === "SELECT") this.render();
+    if (/\.(site|attitude|vie|relation|statut|rencontre|lue)$|^groupe\.site$|^legendes\./.test(path) || ["checkbox", "radio"].includes(t.type) || t.tagName === "SELECT") this.render();
+    if (/^sites\.[^.]+\.statut$/.test(path)) updatePins(path.split(".")[1], value);
     // Ce que le livre prévoit ensuite
     let m;
     if ((m = path.match(/^sites\.([^.]+)\.evenementsFaits\.(.+)$/)) && value) this.#suitesEvenement(m[1], m[2]);
@@ -1086,6 +1237,14 @@ Hooks.on("getSceneControlButtons", (controls) => {
   const notes = controls.notes ?? controls.journal;
   if (!notes?.tools) return;
   notes.tools["fl-campagne"] = { name: "fl-campagne", title: "Suivi de campagne (Alt/⌥+C)", icon: "fa-solid fa-feather", button: true, onChange: () => open(), order: 99 };
+});
+
+Hooks.on("activateNote", (note) => {
+  const id = note?.document?.getFlag(MOD, "site");
+  if (!id || !game.user.isGM) return;
+  open();
+  app.tab = "sites"; app.sel = `site:${id}`; app.render({ force: true });
+  return false;
 });
 
 Hooks.once("ready", () => {

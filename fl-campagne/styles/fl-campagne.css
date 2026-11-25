@@ -170,3 +170,16 @@ details.flc-lieu p { margin-left: 22px; }
 .flc-dlg .flc-check { display: flex; gap: 6px; align-items: flex-start; margin: 5px 0; }
 .flc-rumeur-txt { font-size: 17px; font-style: italic; margin: 8px 0; }
 .flc-session label.flc-hint { display: block; margin-top: 6px; }
+
+/* pages du livre */
+.flc-page { font-family: var(--flc-sc); font-size: 11px; color: var(--flc-accent); border: 1px solid #d9a7a0; border-radius: 3px; padding: 0 4px; white-space: nowrap; font-style: normal; font-weight: normal; vertical-align: middle; }
+/* recherche */
+.fl-campagne .flc-nav { align-items: center; }
+.fl-campagne input.flc-search { margin-left: auto; width: 210px; height: 26px; background: #fff; border: 1px solid #777; border-radius: 3px; font-size: 14px; }
+.flc-results { list-style: none; padding-left: 0 !important; }
+.flc-results li { padding: 3px 0; border-bottom: 1px dotted var(--flc-line); }
+/* points flous */
+.flc-ctr { margin: 6px 0; }
+.flc-ctr.done { border-left: 3px solid #4b8a35; }
+.flc-ctr input[type="text"] { width: 100%; margin-top: 4px; }
+.fl-campagne input[type="radio"] { accent-color: var(--flc-accent); flex: none; margin-top: 3px; }
