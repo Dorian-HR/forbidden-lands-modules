@@ -167,15 +167,27 @@ async function openOfficial({ nom, nom_en, journals = [], acteur, acteurFr }) {
 }
 
 async function openActor(name, frName) {
-  const wanted = [name, frName].filter(Boolean).map((n) => norm(String(n).replace(/^\[base\]\s*/, "")));
-  if (!wanted.length) return ui.notifications.info("Pas de fiche Foundry pour ce PNJ.");
-  let a = game.actors.find((x) => wanted.includes(norm(x.name)));
-  if (!a) for (const pack of game.packs.filter((p) => p.documentName === "Actor")) {
-    const idx = await pack.getIndex();
-    const e = idx.find((x) => wanted.includes(norm(x.name)) || wanted.includes(norm(x.originalName)));
-    if (e) { a = await pack.getDocument(e._id); break; }
+  const base = (n) => String(n ?? "").replace(/^\[base\]\s*/, "").trim();
+  const map = contenu().acteurs_fr ?? {};
+  const raw = [frName, name, map[name], map[base(name)]].filter(Boolean).map(base);
+  const wanted = [...new Set(raw.map(norm))].filter(Boolean);
+  const label = raw[0] || "ce PNJ";
+  if (!wanted.length) return ui.notifications.info("Pas de fiche de jeu pour ce PNJ.");
+  const same = (n) => wanted.includes(norm(n));
+  const close = (n) => { const x = norm(n); return x && wanted.some((w) => x.startsWith(w) || w.startsWith(x)); };
+  const orig = (a) => a?.flags?.babele?.originalName ?? a?.originalName;
+  let a = game.actors.find((x) => same(x.name) || same(orig(x))) ?? game.actors.find((x) => close(x.name));
+  if (!a) {
+    for (const pass of [same, close]) {
+      for (const pack of game.packs.filter((p) => p.documentName === "Actor")) {
+        const idx = await pack.getIndex({ fields: ["flags.babele.originalName"] });
+        const e = idx.find((x) => pass(x.name) || (pass === same && same(orig(x))));
+        if (e) { a = await pack.getDocument(e._id); break; }
+      }
+      if (a) break;
+    }
   }
-  if (!a) return ui.notifications.warn(`Fiche « ${frName ?? name} » introuvable dans le monde ou les compendiums.`);
+  if (!a) return ui.notifications.warn(`Fiche de jeu « ${label} » introuvable dans le monde ou les compendiums.`);
   a.sheet.render(true);
 }
 async function showToPlayers(journals, pages) {

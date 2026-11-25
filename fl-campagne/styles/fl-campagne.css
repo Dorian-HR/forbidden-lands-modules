@@ -125,3 +125,14 @@ details.flc-lieu p { margin-left: 22px; }
 .flc-official-ico { font-size: 14px; color: var(--flc-soft); vertical-align: middle; }
 .fl-campagne button.flc-official { width: 100%; margin: 4px 0 6px; background: var(--flc-band); color: #fff; border: none; padding: 4px; }
 .fl-campagne button.flc-official:hover { box-shadow: 0 0 6px var(--flc-accent); }
+
+/* Foundry colore les tableaux : on garde le papier de la fiche */
+.fl-campagne table.flc-table, .fl-campagne .flc-table thead, .fl-campagne .flc-table tbody, .fl-campagne .flc-table tr, .fl-campagne .flc-table td, .fl-campagne .flc-table th { background: transparent; color: var(--flc-ink); border-left: none; border-right: none; text-shadow: none; }
+.fl-campagne table.flc-table { border: none; margin: 0; }
+.fl-campagne .flc-table thead tr { background: var(--flc-paper); }
+.fl-campagne .flc-table th { color: var(--flc-soft); background: var(--flc-paper); position: sticky; top: -10px; z-index: 1; }
+.fl-campagne .flc-table tr[data-sel]:hover { background: #faf3ea; }
+.fl-campagne .flc-table tr.sel { background: #f6e6dc; }
+.fl-campagne .flc-table .flc-hint { color: var(--flc-soft); }
+.fl-campagne input[type="checkbox"] { accent-color: var(--flc-accent); width: 16px; height: 16px; flex: none; }
+.fl-campagne .flc-filters select, .fl-campagne .flc-filters input { flex: 1 1 180px; width: auto; }
