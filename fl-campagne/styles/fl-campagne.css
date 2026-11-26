@@ -230,3 +230,7 @@ details.flc-lieu p { margin-left: 22px; }
 
 /* surlignage du personnage dans le livre */
 .flc-flash { background: #fff1a8 !important; color: #222 !important; transition: background 1s; outline: 3px solid #fff1a8; }
+
+/* lieux et événements : la case ne prend que sa place, le reste de la ligne ouvre la section */
+.fl-campagne details.flc-lieu summary .flc-check { display: inline-flex !important; vertical-align: middle; margin: 0 4px 0 0; }
+.fl-campagne details.flc-lieu summary { list-style-position: inside; padding: 2px 0; }
