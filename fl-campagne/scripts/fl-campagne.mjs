@@ -167,6 +167,23 @@ function bookMentions(I, nom, id) {
 
 /** Ouvre la description officielle d'un personnage : la page du livre qui porte son nom, sinon la page qui en parle, sinon sa fiche de jeu. */
 const strip = (html) => norm(String(html ?? "").replace(/<[^>]+>/g, " "));
+/** Dans un journal ouvert, descend jusqu'au titre ou au mot en gras qui porte le nom, et le surligne un instant. */
+function scrollToName(sheet, keys) {
+  const tryOnce = (n) => setTimeout(() => {
+    const root = sheet?.element?.[0] ?? sheet?.element;
+    if (!root?.querySelectorAll) return n > 0 && tryOnce(n - 1);
+    const els = [...root.querySelectorAll("h1, h2, h3, h4, h5, h6, strong, b")];
+    let hit = null;
+    for (const k of keys) { hit = els.find((el) => norm(el.textContent).includes(k)); if (hit) break; }
+    if (!hit) { const ps = [...root.querySelectorAll("p")]; for (const k of keys) { hit = ps.find((el) => norm(el.textContent).includes(k)); if (hit) break; } }
+    if (!hit) return n > 0 && tryOnce(n - 1);
+    hit.scrollIntoView({ block: "start", behavior: "smooth" });
+    hit.classList.add("flc-flash");
+    setTimeout(() => hit.classList.remove("flc-flash"), 2500);
+  }, 350);
+  tryOnce(4);
+}
+
 async function openOfficial({ nom, nom_en, journals = [], acteur, acteurFr }) {
   const names = [nom, nom_en].filter(Boolean);
   // noms à chercher : le nom complet, puis le mot le plus distinctif (« Madame Pollmor » → « pollmor »)
@@ -194,7 +211,8 @@ async function openOfficial({ nom, nom_en, journals = [], acteur, acteurFr }) {
       }
     }
     if (page) {
-      j.sheet.render(true, { pageId: page.id });
+      await j.sheet.render(true, { pageId: page.id });
+      scrollToName(j.sheet, keys);
       return;
     }
   }
@@ -229,7 +247,14 @@ async function openActor(name, frName) {
 async function showToPlayers(journals, pages) {
   const j = await findJournal(journals);
   if (!j) return ui.notifications.warn("Légende introuvable.");
-  if (j.pack) return ui.notifications.warn("Cette page est dans un compendium : importez le journal dans le monde pour pouvoir la montrer aux joueurs.");
+  if (j.pack) {
+    const ok = await foundry.applications.api.DialogV2.confirm({ window: { title: "Montrer aux joueurs" },
+      content: `<p>« ${esc(j.name)} » est dans un compendium : les joueurs ne peuvent pas le voir tel quel.</p><p>L'importer dans votre monde (une seule fois), puis le montrer ?</p>` });
+    if (!ok) return;
+    const imported = game.journal.find((x) => x.getFlag("core", "sourceId") === j.uuid || x._stats?.compendiumSource === j.uuid || x.name === j.name)
+      ?? await game.journal.importFromCompendium(game.packs.get(j.pack), j.id, {}, { keepId: true });
+    return showToPlayers([imported.name], pages);
+  }
   const wanted = arr(pages).filter(Boolean).map(norm);
   const page = wanted.length ? j.pages.find((p) => wanted.includes(norm(p.name))) : null;
   const target = page ?? j;
@@ -256,6 +281,17 @@ function lieuBook(s, l) {
 /* -------------------------------------------- */
 /*  La fenêtre                                   */
 /* -------------------------------------------- */
+
+/** Ce qui est coché à un instant donné, pour savoir ce qui a changé pendant une séance. */
+function snapshot(I, e) {
+  return {
+    rencontres: [...I.majeurs.filter((a) => whereMajeur(a, e).rencontre).map((a) => `majeur:${a.id}`), ...I.pnj.filter((p) => wherePnj(p, e).rencontre).map((p) => `pnj:${p._key}`)],
+    sites: I.sites.filter((x) => ["visite", "explore", "conquis"].includes(e.sites[x.id]?.statut)).map((x) => x.id),
+    legendes: I.legendes.map((_, i) => i).filter((i) => e.legendes[i]?.lue),
+    secrets: I.sites.reduce((n, x) => n + Object.values(e.sites[x.id]?.secretsSus ?? {}).filter(Boolean).length, 0),
+    verites: Object.values(e.verites ?? {}).filter(Boolean).length
+  };
+}
 
 /* Légendes absentes de Foundry : une page à remplir par le MJ */
 const LEG_J = "Légendes des acteurs majeurs";
@@ -346,7 +382,7 @@ async function placePin(siteId, app) {
 }
 async function updatePins(siteId, statut) {
   if (!game.user.isGM) return;
-  for (const scene of game.scenes) {
+  for (const scene of game.scenes ?? []) {
     const upd = scene.notes.filter((n) => n.getFlag(MOD, "site") === siteId).map((n) => ({ _id: n.id, "texture.tint": PIN_TINT[statut] ?? PIN_TINT.inconnu }));
     if (upd.length) await scene.updateEmbeddedDocuments("Note", upd);
   }
@@ -1324,13 +1360,32 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       case "session-end": {
         const I = index();
         const t = today();
-        const titre = await foundry.applications.api.DialogV2.prompt({ window: { title: "Clore la session" }, content: `<label>Titre de la session <input type="text" name="t" placeholder="ex. L'arrivée aux Fossés"></label>`, ok: { callback: (_e, b) => b.form.elements.t.value }, rejectClose: false });
-        if (titre == null) return;
+        const now = snapshot(I, e), before = e.snapshot ?? { rencontres: [], sites: [], legendes: [], secrets: 0, verites: 0 };
+        const nouv = (a, b) => a.filter((x) => !b.includes(x));
+        const gens = nouv(now.rencontres, before.rencontres).map((k) => { const [ty, ...r] = k.split(":"); const id = r.join(":");
+          return ty === "majeur" ? I.majeurs.find((a) => a.id === id)?.nom : I.pnj.find((p) => p._key === id)?.nom; }).filter(Boolean);
+        const lieux = nouv(now.sites, before.sites).map((id) => siteName(I, id));
+        const leg = nouv(now.legendes, before.legendes).map((i) => I.legendes[i]?.titre).filter(Boolean);
+        const secrets = Math.max(0, now.secrets - before.secrets), verites = Math.max(0, now.verites - before.verites);
+        const auto = [gens.length ? `Rencontrés : ${gens.join(", ")}` : "", lieux.length ? `Lieux visités : ${lieux.join(", ")}` : "", leg.length ? `Légendes racontées : ${leg.join(", ")}` : "",
+          secrets ? `${secrets} secret(s) découvert(s)` : "", verites ? `${verites} mensonge(s) percé(s) à jour` : ""].filter(Boolean);
+        const res = await foundry.applications.api.DialogV2.prompt({ window: { title: `Clore la session ${e.sessions.length + 1}` }, position: { width: 560 },
+          content: `<div class="flc-dlg">
+            ${auto.length ? `<p class="flc-hint">Le module a noté pendant cette séance :</p><ul>${auto.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : `<p class="flc-hint">Rien de coché pendant la séance (rencontres, lieux, légendes, secrets).</p>`}
+            <label>Titre <input type="text" name="t" placeholder="ex. L'arrivée aux Fossés" style="width:100%"></label>
+            <label>Ce qui s'est passé — pour vous <textarea name="r" rows="3" style="width:100%"></textarea></label>
+            <label>Le récit — pour les joueurs (chronique) <textarea name="j" rows="3" style="width:100%"></textarea></label></div>`,
+          ok: { label: "Clore et inscrire au journal", callback: (_e, b) => ({ t: b.form.elements.t.value, r: b.form.elements.r.value, j: b.form.elements.j.value }) }, rejectClose: false });
+        if (!res) return;
         const prep = Object.entries(e.preparation).filter(([k, v]) => typeof v === "string" && v.trim()).map(([k, v]) => `${k} : ${v}`).join("\n");
-        e.sessions.push({ id: uid(), numero: e.sessions.length + 1, titre, jour: t.day, dateLabel: t.label, lieu: siteName(I, e.groupe.site), resume: "", preparation: prep });
+        e.sessions.push({ id: uid(), numero: e.sessions.length + 1, titre: res.t, jour: t.day, dateLabel: t.label, lieu: siteName(I, e.groupe.site),
+          resume: [res.r, auto.join(" · ")].filter(Boolean).join("\n"), resumeJoueurs: res.j, preparation: prep });
+        e.snapshot = now;
         const conditions = e.preparation.conditions;
         e.preparation = conditions ? { conditions } : {};
-        saveEtat(e); return this.render();
+        saveEtat(e); this.render();
+        ui.notifications.info("Session inscrite au journal. Pensez à « Publier la chronique » pour les joueurs.");
+        return;
       }
     }
   }
@@ -1353,6 +1408,13 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     // Ces changements modifient d'autres parties de l'affichage : on redessine
     if (/\.(site|attitude|vie|relation|statut|rencontre|lue)$|^groupe\.site$|^legendes\./.test(path) || ["checkbox", "radio"].includes(t.type) || t.tagName === "SELECT") this.render();
     if (/^sites\.[^.]+\.statut$/.test(path)) updatePins(path.split(".")[1], value);
+    if (path === "groupe.site" && value) {
+      const stt = e.sites[value]?.statut ?? "inconnu";
+      if (["inconnu", "rumeur"].includes(stt)) {
+        foundry.utils.setProperty(e, `sites.${value}.statut`, "visite"); saveEtat(e); updatePins(value, "visite"); this.render();
+        ui.notifications.info(`${siteName(index(), value)} est maintenant marqué « Les PJ y sont allés ».`);
+      }
+    }
     // Ce que le livre prévoit ensuite
     let m;
     if ((m = path.match(/^sites\.([^.]+)\.evenementsFaits\.(.+)$/)) && value) this.#suitesEvenement(m[1], m[2]);

@@ -227,3 +227,6 @@ details.flc-lieu p { margin-left: 22px; }
 .flc-todo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
 .flc-todo a { color: var(--flc-ink) !important; }
 .flc-todo a b { color: var(--flc-accent); font-size: 17px; }
+
+/* surlignage du personnage dans le livre */
+.flc-flash { background: #fff1a8 !important; color: #222 !important; transition: background 1s; outline: 3px solid #fff1a8; }
