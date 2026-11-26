@@ -397,11 +397,15 @@ function guideItems(I, e) {
 }
 const goAttr = (c) => c.site ? `data-sel="site:${c.site}"` : `data-tab-go="${c.aller ?? "tableau"}"`;
 
-const TABS = [
-  ["tableau", "Tableau", "fa-solid fa-chess-rook"], ["guide", "Guide", "fa-solid fa-compass"], ["qui", "Qui est où", "fa-solid fa-users"], ["sites", "Sites", "fa-solid fa-map-location-dot"],
-  ["acteurs", "Acteurs majeurs", "fa-solid fa-crown"], ["relations", "Relations", "fa-solid fa-diagram-project"], ["vond", "Vers Vond", "fa-solid fa-chess-king"], ["artefacts", "Artefacts", "fa-solid fa-gem"], ["tresors", "Trésors", "fa-solid fa-coins"], ["contradictions", "Points flous", "fa-solid fa-scale-balanced"], ["legendes", "Légendes", "fa-solid fa-scroll"],
-  ["frise", "Frise", "fa-solid fa-timeline"], ["verites", "Croyances & vérité", "fa-solid fa-mask"], ["temps", "Horloges & événements", "fa-solid fa-hourglass-half"], ["sessions", "Sessions", "fa-solid fa-book-open"], ["pj", "Les PJ", "fa-solid fa-user-shield"]
+/** Cinq rubriques, chacune avec quelques onglets. */
+const SECTIONS = [
+  ["commencer", "Avant de commencer", "fa-solid fa-flag", [["essentiel", "L'essentiel"], ["guide", "Guide pas à pas"]]],
+  ["partie", "Ma partie", "fa-solid fa-chess-rook", [["tableau", "En ce moment"], ["sessions", "Sessions"], ["pj", "Les PJ"]]],
+  ["livre", "Le livre", "fa-solid fa-book", [["sites", "Sites"], ["qui", "Personnages"], ["acteurs", "Acteurs majeurs"], ["artefacts", "Artefacts"], ["tresors", "Trésors"], ["legendes", "Légendes"], ["contradictions", "Points flous"]]],
+  ["monde", "Le monde bouge", "fa-solid fa-earth-europe", [["temps", "Calendrier & horloges"], ["frise", "Frise"], ["relations", "Relations"], ["verites", "Secrets & vérités"]]],
+  ["fin", "Vers Vond", "fa-solid fa-chess-king", [["vond", "L'assaut et les fins"]]]
 ];
+const sectionOf = (tab) => SECTIONS.find((x) => x[3].some(([id]) => id === tab)) ?? SECTIONS[1];
 
 class CampagneApp extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
@@ -409,7 +413,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     window: { title: "Suivi de campagne — Le Châtiment du Corbeau", icon: "fa-solid fa-feather", resizable: true },
     position: { width: 1100, height: 760 }
   };
-  tab = "tableau";
+  tab = (game.settings.get(MOD, "etat")?.sessions ?? []).length ? "tableau" : "essentiel";
   sel = null;           // élément ouvert dans le panneau de droite
   filtre = { texte: "", site: "", attitude: "", vie: "" };
   relSite = "";
@@ -421,10 +425,12 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const I = index();
     const e = current();
     if (!I.sites.length && !I.majeurs.length) return this.#empty();
-    const nav = TABS.map(([id, label, icon]) => `<a class="flc-tab${this.tab === id ? " active" : ""}" data-tab="${id}"><i class="${icon}"></i> ${label}</a>`).join("");
-    const body = ({ tableau: () => this.#tableau(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), frise: () => this.#frise(I, e), guide: () => this.#guide(I, e), verites: () => this.#verites(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
+    const cur = this.tab === "recherche" ? null : sectionOf(this.tab);
+    const nav = SECTIONS.map(([id, label, icon, tabs]) => `<a class="flc-tab${cur?.[0] === id ? " active" : ""}" data-tab="${tabs[0][0]}"><i class="${icon}"></i> ${label}</a>`).join("");
+    const sub = cur && cur[3].length > 1 ? `<nav class="flc-sub-nav">${cur[3].map(([id, label]) => `<a class="${this.tab === id ? "active" : ""}" data-tab="${id}">${label}</a>`).join("")}</nav>` : "";
+    const body = ({ tableau: () => this.#tableau(I, e), essentiel: () => this.#essentiel(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), frise: () => this.#frise(I, e), guide: () => this.#guide(I, e), verites: () => this.#verites(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
       artefacts: () => this.#artefacts(I, e), legendes: () => this.#legendes(I, e), temps: () => this.#temps(I, e), sessions: () => this.#sessions(I, e), pj: () => this.#pj(I, e) })[this.tab]();
-    return `<nav class="flc-nav">${nav}<input type="search" class="flc-search" placeholder="Rechercher partout…" value="${esc(this.q)}" data-q></nav><section class="flc-body">${body}</section>`;
+    return `<nav class="flc-nav">${nav}<input type="search" class="flc-search" placeholder="Rechercher partout…" value="${esc(this.q)}" data-q></nav>${sub}<section class="flc-body">${body}</section>`;
   }
   _replaceHTML(html, content) {
     const scroll = content.querySelector(".flc-scroll")?.scrollTop ?? 0;
@@ -445,69 +451,66 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   #tableau(I, e) {
     const t = today();
     const g = e.groupe;
-    const siteOpts = `<option value="">— où sont les PJ ? —</option>` + I.sites.map((s) => `<option value="${s.id}"${g.site === s.id ? " selected" : ""}>${esc(s.nom)}</option>`).join("");
-    const here = I.sites.find((s) => s.id === g.site);
+    const siteOpts = `<option value="">— choisir —</option>` + I.sites.map((s) => `<option value="${s.id}"${g.site === s.id ? " selected" : ""}>${esc(s.nom)}</option>`).join("");
+    const here = I.siteById[g.site];
+    const st = here ? e.sites[here.id] ?? {} : {};
     const ici = here ? I.pnj.filter((p) => wherePnj(p, e).site === here.id && wherePnj(p, e).vie !== "mort") : [];
-    const majeursIci = here ? I.majeurs.filter((a) => norm(whereMajeur(a, e).ou).includes(norm(here.nom))) : [];
-    // Le monde bouge : horloges presque pleines et événements datés proches
-    const clocks = e.horloges.filter((h) => h.rempli < h.segments).sort((a, b) => b.rempli / b.segments - a.rempli / a.segments).slice(0, 5);
-    const soon = e.evenements.filter((v) => !v.fait && v.jour !== "" && v.jour != null).sort((a, b) => a.jour - b.jour).slice(0, 6);
-    const lateDue = soon.filter((v) => v.jour <= t.day);
-    // Légende de la session
+    const majeursIci = here ? I.majeurs.filter((a) => arr(a.sites_lies).includes(here.id) && norm(whereMajeur(a, e).ou).includes(norm(here.nom))) : [];
+    const twoSentences = (txt) => String(txt ?? "").split(/(?<=[.!?])\s+/).slice(0, 2).join(" ");
+    let qui = [...majeursIci.map((a) => ({ k: `majeur:${a.id}`, nom: a.nom, veut: arr(a.veut)[0], maj: true, att: whereMajeur(a, e).relation })),
+      ...ici.filter((p) => !/groupe|gardes|bandits|ogres|orques|morts|squelettes|soldats|milice/i.test(p.nom)).map((p) => ({ k: `pnj:${p._key}`, nom: p.nom, veut: arr(p.veut)[0], att: wherePnj(p, e).attitude }))];
+    const evRest = here ? here._ev.filter((v) => !(st.evenementsFaits ?? {})[v.id]) : [];
+    const rumRest = here ? here._rum.filter((r, i) => !(st.rumeursDites ?? {})[i]) : [];
+    const trRest = here ? arr(here.lieux).filter((l) => l.tresor && !/^(aucun|rien)/i.test(l.tresor) && !(st.tresorsPris ?? {})[l.id]) : [];
+    const clocks = e.horloges.filter((h) => h.rempli < h.segments).sort((a, b) => b.rempli / b.segments - a.rempli / a.segments).slice(0, 3);
+    const soon = e.evenements.filter((v) => !v.fait && v.jour !== "" && v.jour != null).sort((a, b) => a.jour - b.jour).slice(0, 4);
     const nextLegend = I.legendes.find((l, i) => !e.legendes[i]?.lue);
-    const nextLegendIdx = I.legendes.indexOf(nextLegend);
-    // Conditions de la confrontation finale
-    const cond = arr(I.campagne.conditions_confrontation_finale);
-    const condDone = e.preparation.conditions ?? {};
-    return `<div class="flc-scroll flc-board">
-      <div class="flc-card flc-wide">
-        <h3>Où en est la partie</h3>
-        <p class="flc-date">${t.label ? esc(t.label) : "<i>Date : activez fl-temps pour dater les sessions.</i>"}</p>
-        <div class="flc-row"><label>Les PJ sont à</label><select data-path="groupe.site">${siteOpts}</select>
-          <input type="text" placeholder="lieu précis / hexagone" value="${esc(g.lieu)}" data-path="groupe.lieu"></div>
-        ${here ? `<p class="flc-lead">${esc(here.resume_mj ?? "")}</p>
-          <p><b>Qui est ici :</b> ${[...majeursIci.map((a) => `<a data-sel="majeur:${a.id}">${esc(a.nom)}</a> <span class="flc-tag">majeur</span>`), ...ici.map((p) => `<a data-sel="pnj:${p._key}">${esc(p.nom)}</a>`)].join(", ") || "<i>personne de connu</i>"}</p>
-          <div class="flc-buttons"><button type="button" data-sel="site:${here.id}"><i class="fa-solid fa-map"></i> Ouvrir la fiche du site</button>
-          <button type="button" data-rumeur="${here.id}"><i class="fa-solid fa-comments"></i> Tirer une rumeur</button></div>` : `<p class="flc-hint">Choisissez où sont les PJ : le tableau vous montre alors qui est là et ce qui peut arriver.</p>`}
-      </div>
-      <div class="flc-card">
-        <h3>Le monde bouge</h3>
-        ${lateDue.length ? `<p class="flc-alert"><i class="fa-solid fa-bell"></i> ${lateDue.length} événement${lateDue.length > 1 ? "s" : ""} arrivé${lateDue.length > 1 ? "s" : ""} à échéance !</p>` : ""}
-        ${soon.length ? `<ul class="flc-list">${soon.map((v) => `<li class="${v.jour <= t.day ? "due" : ""}"><b>${esc(v.titre)}</b><br><span class="flc-hint">${esc(dayLabel(v.jour))}</span></li>`).join("")}</ul>` : `<p class="flc-hint">Aucun événement daté. Ajoutez-en dans « Horloges & événements ».</p>`}
-        ${clocks.length ? `<h4>Horloges</h4>${clocks.map((h) => this.#clock(h)).join("")}` : ""}
-      </div>
-      <div class="flc-card">
-        <h3>Pour la prochaine session</h3>
-        ${nextLegend ? `<p><b>Légende à présenter</b> (le livre conseille une par session) : <a data-tab-go="legendes">${esc(nextLegend.titre)}</a></p>` : I.legendes.length ? `<p class="flc-hint">Toutes les légendes ont été lues.</p>` : ""}
-        <p><b>Préparation :</b> ${Object.values(e.preparation).filter((v) => typeof v === "string" && v.trim()).length ? "en cours" : "à faire"} — <a data-tab-go="sessions">ouvrir la préparation</a></p>
-        ${e.sessions.length ? `<p><b>Dernière session :</b> ${esc(e.sessions.at(-1).titre || `Session ${e.sessions.length}`)}</p>` : ""}
-      </div>
-      ${(() => { const items = guideItems(I, e).filter((c) => c.etape !== "À chaque session"); const n = items.find((c) => !c.fait);
-        if (!items.length) return "";
-        return `<div class="flc-card flc-next"><h3>Prochaine étape conseillée <span class="flc-hint">${items.filter((c) => c.fait).length}/${items.length}</span></h3>
-          ${n ? `<p class="flc-hint">${esc(n.etape)}</p><p><b>${esc(n.titre)}</b></p><p>${esc(n.texte)}</p>
-          <div class="flc-buttons"><button type="button" ${goAttr(n)}><i class="fa-solid fa-arrow-right"></i> J'y vais</button>
-            <button type="button" data-guide-done="${n.i}.${n.j}"><i class="fa-solid fa-check"></i> C'est fait</button>
-            <button type="button" data-tab-go="guide">Tout le guide</button></div>` : `<p>Tout le guide est fait. Bonne fin de campagne !</p>`}</div>`; })()}
-      ${(() => { const cs = arr(I.campagne.conseils_mj); if (!cs.length) return "";
-        const n = (this._conseil ?? Math.floor(Math.random() * cs.length)) % cs.length; this._conseil = n;
-        return `<div class="flc-card"><h3>Conseil du livre <span class="flc-hint">${n + 1}/${cs.length}</span></h3><p>${esc(cs[n])}</p>
-          <div class="flc-buttons"><button type="button" class="flc-small" data-conseil="1">Conseil suivant</button><button type="button" class="flc-small" data-tab-go="verites">Croyances &amp; vérité</button></div></div>`; })()}
-      <div class="flc-card">
-        <h3>Fichiers</h3>
-        <p class="flc-hint">Le contenu du livre vient de votre fichier privé ; votre partie (qui est où, notes, sessions…) est gardée dans le monde.</p>
-        <div class="flc-buttons">
-          <button type="button" data-act="import"><i class="fa-solid fa-file-import"></i> Mettre à jour la campagne</button>
-          <button type="button" data-act="export"><i class="fa-solid fa-floppy-disk"></i> Sauvegarder ma partie</button>
-          <button type="button" data-act="restore"><i class="fa-solid fa-clock-rotate-left"></i> Restaurer une sauvegarde</button>
+    const items = guideItems(I, e).filter((c) => c.etape !== "À chaque session");
+    const n = items.find((c) => !c.fait);
+    const trunc = (x, k = 90) => { x = String(x ?? ""); return x.length > k ? x.slice(0, k - 1) + "…" : x; };
+    return `<div class="flc-scroll"><div class="flc-now">
+      <div class="flc-now-main">
+        <div class="flc-card">
+          <div class="flc-row"><label><b>Les PJ sont à</b></label><select data-path="groupe.site">${siteOpts}</select>
+            <input type="text" placeholder="lieu précis (facultatif)" value="${esc(g.lieu)}" data-path="groupe.lieu"></div>
+          <p class="flc-date">${t.label ? esc(t.label) : ""}</p>
         </div>
+        ${here ? `<div class="flc-card">
+          <h3>${esc(here.nom)}${pageTag(here)} <span class="flc-status ${st.statut ?? "inconnu"}">${lab(SITE_STATUS, st.statut ?? "inconnu")}</span></h3>
+          <p class="flc-lead">${esc(twoSentences(here.resume_mj))}</p>
+          <div class="flc-buttons"><button type="button" data-sel="site:${here.id}"><i class="fa-solid fa-map"></i> Tout sur ce site</button>
+            <button type="button" data-print="${here.id}"><i class="fa-solid fa-print"></i> Fiche à imprimer</button></div>
+        </div>
+        <div class="flc-card"><h3>Qui est là</h3>
+          ${(() => { const vide = (v) => !v || /^(rien d.explicite|le livre ne|non pr[ée]cis)/i.test(v); const autres = qui.filter((q) => vide(q.veut)); qui = qui.filter((q) => !vide(q.veut)); this._autres = autres; return ""; })()}
+          ${qui.length ? `<table class="flc-table"><tbody>${qui.map((q) => `<tr data-sel="${q.k}"><td><b>${esc(q.nom)}</b>${q.maj ? ` <span class="flc-tag">majeur</span>` : ""}</td><td>${esc(trunc(q.veut))}</td><td><span class="flc-att ${q.att}">${lab(ATTITUDES, q.att)}</span></td></tr>`).join("")}</tbody></table>
+            <p class="flc-hint">Une ligne = ce qu'il veut. Cliquez pour sa fiche.</p>` : `<p class="flc-hint">Personne de nommé ici.</p>`}
+          ${this._autres?.length ? `<p><span class="flc-hint">Aussi présents :</span> ${this._autres.map((q) => `<a data-sel="${q.k}">${esc(q.nom)}</a>`).join(", ")}</p>` : ""}
+        </div>
+        <div class="flc-card"><h3>Ce qui peut arriver ici</h3>
+          <div class="flc-todo">
+            <a data-sel="site:${here.id}"><b>${evRest.length}</b> événement${evRest.length > 1 ? "s" : ""} pas encore joué${evRest.length > 1 ? "s" : ""}</a>
+            <a data-rumeur="${here.id}"><b>${rumRest.length}</b> rumeur${rumRest.length > 1 ? "s" : ""} à glisser — <u>en tirer une</u></a>
+            <a data-tab-go="tresors"><b>${trRest.length}</b> trésor${trRest.length > 1 ? "s" : ""} encore en place</a>
+          </div>
+          ${evRest.slice(0, 3).map((v) => `<p>• <b>${esc(v.titre)}</b>${v.declencheur ? ` <span class="flc-hint">— ${esc(trunc(v.declencheur, 110))}</span>` : ""}</p>`).join("")}
+        </div>` : `<div class="flc-card flc-next"><h3>Pour commencer</h3><p>Choisissez où sont les PJ ci-dessus : cet écran vous dira <b>qui est là</b>, <b>ce qu'ils veulent</b> et <b>ce qui peut arriver</b>.</p>
+          <p>Première fois ? Lisez <a data-tab-go="essentiel">l'essentiel en cinq minutes</a>.</p></div>`}
       </div>
-      ${cond.length ? `<div class="flc-card">
-        <h3>Vers la confrontation finale à Vond</h3>
-        <p class="flc-hint">Elle peut avoir lieu quand ces conditions sont remplies :</p>
-        ${cond.map((c, i) => `<label class="flc-check"><input type="checkbox" data-path="preparation.conditions.${i}" ${condDone[i] ? "checked" : ""}> ${esc(c)}</label>`).join("")}
-      </div>` : ""}
-    </div>`;
+      <div class="flc-now-side">
+        ${n ? `<div class="flc-card flc-next"><h3>Prochaine étape</h3><p><b>${esc(n.titre)}</b></p><p>${esc(n.texte)}</p>
+          <div class="flc-buttons"><button type="button" ${goAttr(n)}>J'y vais</button><button type="button" data-guide-done="${n.i}.${n.j}"><i class="fa-solid fa-check"></i> Fait</button></div>
+          <p class="flc-hint">${items.filter((c) => c.fait).length}/${items.length} — <a data-tab-go="guide">tout le guide</a></p></div>` : ""}
+        <div class="flc-card"><h3>Prochaine session</h3>
+          ${nextLegend ? `<p>Légende à raconter : <a data-tab-go="legendes">${esc(nextLegend.titre)}</a></p>` : ""}
+          <p><a data-tab-go="sessions">Préparer la session →</a></p>
+          ${e.sessions.length ? `<p class="flc-hint">Dernière : ${esc(e.sessions.at(-1).titre || `session ${e.sessions.length}`)}</p>` : ""}</div>
+        ${soon.length || clocks.length ? `<div class="flc-card"><h3>Le monde bouge</h3>
+          ${soon.map((v) => `<p class="${v.jour <= t.day ? "flc-alert" : ""}">${v.jour <= t.day ? `<i class="fa-solid fa-bell"></i> ` : ""}<b>${esc(v.titre)}</b><br><span class="flc-hint">${esc(dayLabel(v.jour))}</span></p>`).join("")}
+          ${clocks.map((h) => this.#clock(h)).join("")}
+          <p><a data-tab-go="temps">Calendrier & horloges →</a></p></div>` : ""}
+      </div>
+    </div></div>`;
   }
 
   #clock(h) {
@@ -878,12 +881,47 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       `<li>${h.k ? `<a data-sel="${h.k}">${esc(h.nom)}</a>` : `<a data-tab-go="${h.tab}">${esc(h.nom)}</a>`}${pageTag(h.o)} <span class="flc-hint">${esc(h.type)} · mots : ${h.shared.map(esc).join(", ")}</span></li>`).join("")}</ul>`;
   }
 
+  /* ---------- Avant de commencer : l'essentiel ---------- */
+  #essentiel(I, e) {
+    const E = I.c.essentiel ?? {};
+    const maj = (id) => I.majeurs.find((a) => a.id === id);
+    const art = I.artefacts.slice(0, 4);
+    const cond = arr(I.campagne.conditions_confrontation_finale).filter((c) => !/^conseil/i.test(c));
+    const groups = [...new Set(arr(E.sites).map((x) => x.groupe))];
+    const firstSentence = (t) => String(t ?? "").replace(/^Emplacement suggéré\s*:\s*/i, "").split(/(?<=\.)\s/)[0];
+    return `<div class="flc-scroll flc-essentiel">
+      <div class="flc-hero"><h2>Le Châtiment du Corbeau en cinq minutes</h2><p class="flc-lead">${esc(E.en_une_phrase ?? "")}</p></div>
+      <div class="flc-board">
+        <div class="flc-card flc-wide"><h3>1. L'histoire</h3>${arr(E.histoire).map((x) => `<p>${esc(x)}</p>`).join("")}</div>
+        <div class="flc-card flc-wide"><h3>2. Ce que doivent faire les PJ</h3><p>${esc(E.but_des_pj ?? "")}</p>
+          ${cond.length ? `<p class="flc-hint">Le livre : la confrontation finale peut avoir lieu quand…</p><ul>${cond.map((c) => `<li>${esc(c)}</li>`).join("")}</ul>` : ""}</div>
+        <div class="flc-card flc-wide"><h3>3. Qui compte</h3><table class="flc-table"><tbody>${arr(E.qui_compte).map((q) => { const a = maj(q.id);
+          return `<tr data-sel="majeur:${q.id}"><td class="flc-nowrap"><b>${esc(a?.nom.replace(/\s*\(.*\)$/, "") ?? q.id)}</b>${pageTag(a)}</td><td>${esc(q.ligne)}</td></tr>`; }).join("")}</tbody></table>
+          <p class="flc-hint">Cliquez sur une ligne pour sa fiche complète.</p></div>
+        <div class="flc-card flc-wide"><h3>4. Les quatre objets à trouver</h3><table class="flc-table"><tbody>${art.map((a) => { const st = e.artefacts[a.id] ?? {};
+          return `<tr><td class="flc-nowrap"><b>${esc(a.nom.split(/[(,]/)[0].trim())}</b>${pageTag(a)}</td><td>${esc(a.description_courte ?? "")}<br><span class="flc-hint">Le livre suggère : ${esc(firstSentence(a.emplacement_par_defaut))}</span>
+            ${st.ou ? `<br><b>Dans votre partie :</b> ${esc(st.ou)}` : `<br><a data-tab-go="artefacts">Choisir où il est dans votre partie →</a>`}</td></tr>`; }).join("")}</tbody></table></div>
+        <div class="flc-card flc-wide"><h3>5. Les lieux</h3>${groups.map((g) => `<h4>${esc(g)}</h4><table class="flc-table"><tbody>${arr(E.sites).filter((x) => x.groupe === g).map((x) =>
+          `<tr data-sel="site:${x.id}"><td class="flc-nowrap"><b>${esc(siteName(I, x.id))}</b>${pageTag(I.siteById[x.id])}</td><td>${esc(x.ligne)}</td></tr>`).join("")}</tbody></table>`).join("")}</div>
+        <div class="flc-card flc-wide"><h3>6. Les règles d'or</h3><ol>${arr(E.regles_or).map((x) => `<li>${esc(x)}</li>`).join("")}</ol></div>
+        ${arr(E.votre_debut).length ? `<div class="flc-card flc-wide flc-next"><h3>7. Votre début de campagne</h3>${arr(E.votre_debut).map((x) => `<p>${esc(x)}</p>`).join("")}</div>` : ""}
+        <div class="flc-card flc-wide"><h3>Comment se servir du module</h3><table class="flc-table"><tbody>${arr(E.mode_emploi).map(([a, b]) => `<tr><td class="flc-nowrap"><b>${esc(a)}</b></td><td>${esc(b)}</td></tr>`).join("")}</tbody></table>
+          <p class="flc-hint">La barre « Rechercher partout », en haut à droite, trouve n'importe quel nom. Le raccourci Alt+C (⌥C) ouvre cette fenêtre.</p>
+          <div class="flc-buttons"><button type="button" data-tab-go="guide"><i class="fa-solid fa-compass"></i> Suivre le guide pas à pas</button><button type="button" data-tab-go="tableau"><i class="fa-solid fa-chess-rook"></i> Aller à ma partie</button></div></div>
+        <div class="flc-card flc-wide"><h3>Fichiers</h3>
+          <p class="flc-hint">Le contenu du livre vient de votre fichier privé ; votre partie (qui est où, notes, sessions…) est gardée dans le monde.</p>
+          <div class="flc-buttons"><button type="button" data-act="import"><i class="fa-solid fa-file-import"></i> Mettre à jour la campagne</button>
+            <button type="button" data-act="export"><i class="fa-solid fa-floppy-disk"></i> Sauvegarder ma partie</button>
+            <button type="button" data-act="restore"><i class="fa-solid fa-clock-rotate-left"></i> Restaurer une sauvegarde</button></div></div>
+      </div></div>`;
+  }
+
   /* ---------- Guide de campagne ---------- */
   #guide(I, e) {
     const groups = arr(I.c.guide);
     const book = arr(I.campagne.conseils_mj);
     return `<div class="flc-scroll">
-      <p class="flc-hint">Par où commencer et quoi faire ensuite. <b>Ces conseils sont ceux de Claude, pas du livre</b> : ils s'appuient sur le contenu vérifié du livre et sur les outils du module. Cochez ce qui est fait ; la prochaine étape s'affiche sur le Tableau.</p>
+      <p class="flc-hint">Par où commencer et quoi faire ensuite. <b>Ces conseils sont ceux de Claude, pas du livre</b> : ils s'appuient sur le contenu vérifié du livre et sur les outils du module. Cochez ce qui est fait ; la prochaine étape s'affiche dans Ma partie → En ce moment.</p>
       ${groups.map((g, i) => { const done = arr(g.conseils).filter((_, j) => e.guide?.[i]?.[j]).length;
         return `<h3>${esc(g.etape)} <span class="flc-hint">${done}/${arr(g.conseils).length}</span></h3>${arr(g.conseils).map((c, j) => { const f = !!e.guide?.[i]?.[j];
           return `<div class="flc-guide ${f ? "done" : ""}"><label class="flc-check"><input type="checkbox" data-path="guide.${i}.${j}" ${f ? "checked" : ""}> <span><b>${esc(c.titre)}</b><br>${esc(c.texte)}</span></label>
@@ -911,7 +949,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
       ${vecu || `<li class="flc-fr-vide flc-hint">Pas encore de session au journal.</li>`}
       ${pt("now", "Aujourd'hui", esc(t.label || `jour ${t.day}`), e.groupe.site ? `Les PJ sont à ${esc(siteName(I, e.groupe.site))}` : "")}
       <li class="flc-fr-sec">À venir</li>
-      ${apres.map((v) => pt("futur", esc(dayLabel(v.jour)), esc(v.titre), esc(v.notes ?? ""))).join("") || `<li class="flc-fr-vide flc-hint">Aucun événement daté. Utilisez « Dater » ci-dessous ou dans « Horloges ».</li>`}
+      ${apres.map((v) => pt("futur", esc(dayLabel(v.jour)), esc(v.titre), esc(v.notes ?? ""))).join("") || `<li class="flc-fr-vide flc-hint">Aucun événement daté. Utilisez « Dater » ci-dessous ou « Calendrier & horloges ».</li>`}
       ${e.horloges.filter((h) => h.rempli < h.segments).map((h) => pt("horloge", `${h.rempli}/${h.segments}`, esc(h.nom), "horloge en cours")).join("")}
       <li class="flc-fr-sec">Ce qui arrive si les PJ n'agissent pas (livre)</li>
       ${pendant.map((c, i) => pt("livre-futur", esc(c.quand ?? ""), esc(c.evenement ?? ""), c.acteur ? esc(personName(I, c.acteur)) : "", `${pg(c)} <button type="button" class="flc-small" data-chrono="${chrono.indexOf(c)}">Dater</button>`)).join("")}

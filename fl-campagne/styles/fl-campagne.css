@@ -208,3 +208,22 @@ details.flc-lieu p { margin-left: 22px; }
 .flc-guide .flc-check { flex: 1; }
 .flc-guide.done span { opacity: .5; }
 .flc-livre li { margin: 4px 0; }
+
+/* ---- navigation à deux niveaux ---- */
+.fl-campagne .flc-tab { font-size: 15px; padding: 9px 14px 7px; }
+.flc-sub-nav { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 10px; background: #ebe6dc; border-bottom: 1px solid var(--flc-line); flex: none; }
+.flc-sub-nav a { color: var(--flc-ink) !important; padding: 3px 10px; border-radius: 3px; font-size: 14px; cursor: pointer; text-decoration: none; }
+.flc-sub-nav a:hover { background: #fff; }
+.flc-sub-nav a.active { background: var(--flc-ink); color: #fff !important; }
+/* ---- l'essentiel ---- */
+.flc-essentiel { max-width: 980px; }
+.flc-hero { text-align: center; padding: 6px 30px 10px; }
+.flc-hero .flc-lead { font-size: 17px; }
+.flc-essentiel .flc-card p { margin: 6px 0; line-height: 1.45; }
+.flc-essentiel ol li { margin: 5px 0; }
+/* ---- en ce moment ---- */
+.flc-now { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 12px; align-items: start; }
+.flc-now-main, .flc-now-side { display: flex; flex-direction: column; gap: 12px; }
+.flc-todo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
+.flc-todo a { color: var(--flc-ink) !important; }
+.flc-todo a b { color: var(--flc-accent); font-size: 17px; }
