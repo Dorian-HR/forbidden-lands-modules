@@ -36,7 +36,8 @@ const attFromText = (t) => {
 /*  Données : contenu importé + état de la partie */
 /* -------------------------------------------- */
 
-const contenu = () => game.settings.get(MOD, "contenu") ?? {};
+let CONTENT = null;   // le fichier de campagne, gardé en mémoire (relu seulement quand il change)
+const contenu = () => (CONTENT ??= game.settings.get(MOD, "contenu") ?? {});
 const etat = () => foundry.utils.mergeObject(defaultEtat(), game.settings.get(MOD, "etat") ?? {}, { inplace: false });
 function defaultEtat() {
   return { groupe: { site: "", lieu: "", hex: "", note: "" }, sites: {}, pnj: {}, acteurs: {}, artefacts: {}, legendes: {},
@@ -53,13 +54,15 @@ const current = () => pendingEtat ?? etat();
 /** Index de tout le contenu, avec les clés uniques. */
 function index() {
   const c = contenu();
+  if (index.full && index.src === c) return index.full;
   const sites = arr(c.sites).map((s) => ({ ...s.site, _pnj: arr(s.pnj), _ev: arr(s.evenements), _rum: arr(s.rumeurs) }));
   const siteById = Object.fromEntries(sites.map((s) => [s.id, s]));
   index.cache = { siteById };
   const pnj = [];
   for (const s of sites) for (const p of s._pnj) pnj.push({ ...p, _key: `${s.id}:${p.id}`, _site: s.id });
   const majeurs = arr(c.acteurs_majeurs).map((a) => ({ ...a, _key: `majeur:${a.id}` }));
-  return (index.cache = { c, sites, siteById, pnj, majeurs, artefacts: arr(c.artefacts), legendes: arr(c.campagne?.legendes), campagne: c.campagne ?? {} });
+  index.src = c;
+  return (index.full = index.cache = { c, sites, siteById, pnj, majeurs, artefacts: arr(c.artefacts), legendes: arr(c.campagne?.legendes), campagne: c.campagne ?? {} });
 }
 
 /** Où est un PNJ maintenant (l'état de la partie l'emporte sur le livre). */
@@ -1440,6 +1443,7 @@ async function importCampagne(app) {
       const data = JSON.parse(await file.text());
       if (!Array.isArray(data.sites) && !Array.isArray(data.acteurs_majeurs)) throw new Error("Ce fichier n'est pas un fichier de campagne.");
       await game.settings.set(MOD, "contenu", data);
+      CONTENT = null; index.full = null;
       ui.notifications.info(`Campagne importée : ${arr(data.sites).length} sites, ${arr(data.acteurs_majeurs).length} acteurs majeurs, ${arr(data.sites).reduce((n, s) => n + arr(s.pnj).length, 0)} PNJ.`);
       app?.render();
     } catch (e) { ui.notifications.error(`Import impossible : ${e.message}`); }
@@ -1459,7 +1463,7 @@ function open() {
 }
 
 Hooks.once("init", () => {
-  game.settings.register(MOD, "contenu", { scope: "world", config: false, type: Object, default: {} });
+  game.settings.register(MOD, "contenu", { scope: "world", config: false, type: Object, default: {}, onChange: () => { CONTENT = null; index.full = null; app?.rendered && app.render(); } });
   game.settings.register(MOD, "etat", { scope: "world", config: false, type: Object, default: {}, onChange: () => { if (app?.rendered && !pendingEtat) app.render(); } });
   game.keybindings.register(MOD, "open", { name: "Ouvrir le suivi de campagne", editable: [{ key: "KeyC", modifiers: ["Alt"] }], restricted: true, onDown: () => { open(); return true; } });
 });
@@ -1484,4 +1488,11 @@ Hooks.once("ready", () => {
   checkRappels();
 });
 // la date avance (fl-temps) : le tableau se met à jour
-Hooks.on("updateWorldTime", () => { checkRappels(); if (app?.rendered && ["tableau", "temps"].includes(app.tab)) app.render(); });
+let lastDay = null;
+Hooks.on("updateWorldTime", () => {
+  const d = today().day;
+  if (d === lastDay) return;
+  lastDay = d;
+  checkRappels();
+  if (app?.rendered && ["tableau", "temps", "frise"].includes(app.tab)) app.render();
+});
