@@ -872,6 +872,9 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   /* ---------- Interactions ---------- */
   _onRender() {
     const el = this.element;
+    // Les écouteurs sont posés sur la fenêtre, qui survit aux rafraîchissements : une seule fois
+    if (el.dataset.flcBound) return;
+    el.dataset.flcBound = "1";
     el.addEventListener("click", (ev) => this.#click(ev));
     el.addEventListener("change", (ev) => this.#change(ev));
     el.addEventListener("mouseover", (ev) => {
