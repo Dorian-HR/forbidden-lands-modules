@@ -1,236 +1,441 @@
-/* Forbidden Lands – Suivi de campagne : le style de la fiche (papier blanc, encre noire, IM Fell, bandeau sombre) */
+/* =====================================================================================
+   Forbidden Lands – Suivi de campagne
+   Direction artistique reprise du système Forbidden Lands (fiche de personnage et journaux) :
+   papier blanc, encre noire, rouge sang, bandeau d'onglets sombre avec l'épée et le crâne,
+   cadres encrés, polices IM Fell. Les ornements et polices viennent du système installé.
+   ===================================================================================== */
+
+/* Glyphes de l'onglet actif (polices du système) */
+@font-face { font-family: "flc-swords"; src: url("../../../systems/forbidden-lands/fonts/swordlings.ttf"); }
+@font-face { font-family: "flc-skulls"; src: url("../../../systems/forbidden-lands/fonts/skullz.ttf"); }
+
 .fl-campagne {
-  --flc-ink: #222020;
-  --flc-soft: #77706a;
-  --flc-line: #d8d2c8;
-  --flc-paper: #fff;
-  --flc-paper2: #f7f4ee;
-  --flc-band: #3a3a3a;
-  --flc-accent: #a00404;
-  --flc-serif: "IM Fell DW Pica", "IM Fell Great Primer", Georgia, serif;
-  --flc-sc: "IM Fell DW Pica SC", "IM Fell DW Pica", Georgia, serif;
+  --flc-ink: var(--color-theme-text, #222020);
+  --flc-paper: var(--color-theme-background, #fff);
+  --flc-accent: var(--color-theme-accent, #a00404);
+  --flc-g2: var(--color-theme-gray-200, #dddddd);
+  --flc-g4: var(--color-theme-gray-400, #999999);
+  --flc-g6: var(--color-theme-gray-600, #707070);
+  --flc-g8: var(--color-theme-gray-800, #333333);
+  --flc-teal: var(--color-theme-alt-600, #36b5a7);
+  --flc-teal-d: var(--color-theme-alt-800, #005d67);
+  --flc-sand: var(--color-theme-alt-1000, #bcb192);
+  --flc-zebra: color-mix(in srgb, var(--flc-g2) 50%, transparent);
+  --flc-head: "IM Fell DW Pica SC", "IM Fell DW Pica", Georgia, serif;
+  --flc-title: "IM Fell Three Line Pica", "IM Fell DW Pica", Georgia, serif;
+  --flc-text: "IM Fell Great Primer", "IM Fell DW Pica", Georgia, serif;
+  --flc-ui: Author, Signika, "Helvetica Neue", sans-serif;
+  --flc-ease: cubic-bezier(.2, .7, .3, 1);
 }
-.fl-campagne .window-content { padding: 0; display: flex; flex-direction: column; background: var(--flc-paper); color: var(--flc-ink); font-family: var(--flc-serif); font-size: 15px; overflow: hidden; }
 
-/* onglets : le bandeau sombre de la fiche */
-.flc-nav { display: flex; flex-wrap: wrap; background: var(--flc-band); padding: 0 6px; flex: none; }
-.fl-campagne .flc-tab { color: #fff; padding: 8px 11px 6px; font-family: var(--flc-sc); font-size: 14px; letter-spacing: .4px; text-transform: uppercase; cursor: pointer; white-space: nowrap; text-decoration: none; }
-.flc-tab i { opacity: .8; margin-right: 3px; }
-.fl-campagne .flc-tab:hover { text-shadow: 0 0 8px var(--flc-accent); color: #fff; }
-.fl-campagne .flc-tab.active { text-shadow: 0 0 6px var(--flc-accent), 0 0 12px var(--flc-accent); }
+/* ---------------------------------------------------------------- fenêtre */
+.application.fl-campagne { background: var(--flc-paper); }
+.application.fl-campagne > .window-header { background: var(--flc-g8); color: #fff; border-bottom: 0; }
+.application.fl-campagne > .window-header .window-title {
+  font-family: var(--flc-head); font-size: 15px; letter-spacing: .6px; color: #fff; text-shadow: 0 0 6px rgba(0, 0, 0, .6);
+}
+.application.fl-campagne > .window-header :is(button, a) { color: #fff; }
+.fl-campagne .window-content {
+  padding: 0; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--flc-paper); color: var(--flc-ink);
+  font-family: var(--flc-text); font-size: 15px; line-height: 1.42;
+}
+
+/* ---------------------------------------------------------------- onglets (bandeau du système) */
+.flc-nav {
+  display: flex; align-items: center; gap: 4px; flex: none; flex-wrap: wrap;
+  background: var(--flc-g8); padding: 0 12px; min-height: 44px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25); position: relative; z-index: 2;
+}
+.fl-campagne .flc-tab {
+  position: relative; padding: 12px 18px 10px; color: #fff; text-decoration: none; cursor: pointer;
+  font-family: var(--flc-text); font-size: 16px; line-height: 1; text-transform: uppercase; white-space: nowrap;
+  transition: text-shadow .2s, filter .2s;
+}
+.fl-campagne .flc-tab:hover { color: #fff; text-shadow: 0 0 6px #fff; }
+.fl-campagne .flc-tab.active { filter: drop-shadow(0 0 2px #999); text-shadow: 0 0 10px #fff; }
+.fl-campagne .flc-tab.active::before,
+.fl-campagne .flc-tab.active::after { position: absolute; top: 50%; text-transform: lowercase; animation: flc-fade .3s var(--flc-ease); }
+.fl-campagne .flc-tab.active::before { content: "x"; font-family: "flc-swords", "Swordlings"; font-size: 16px; left: 0; transform: translateY(-55%); }
+.fl-campagne .flc-tab.active::after { content: "l"; font-family: "flc-skulls", "skullz"; font-size: 24px; right: -3px; transform: translateY(-52%); }
+
+.application.fl-campagne .flc-nav input.flc-search {
+  margin-left: auto; width: 220px; height: 28px; padding: 0 10px;
+  font-family: var(--flc-ui); font-size: 13px; color: #fff;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .35); border-radius: 3px; box-shadow: none;
+  transition: background .2s, color .2s, box-shadow .2s, width .25s var(--flc-ease);
+}
+.application.fl-campagne .flc-nav input.flc-search::placeholder { color: rgba(255, 255, 255, .6); }
+.application.fl-campagne .flc-nav input.flc-search:focus { width: 260px; background: #fff; color: var(--flc-ink); border-color: var(--flc-teal-d); box-shadow: 0 0 10px var(--flc-teal); outline: none; }
+.application.fl-campagne .flc-nav input.flc-search:focus::placeholder { color: var(--flc-g6); }
+
+/* sous-onglets : petites capitales, fleuron qui se déploie sous l'onglet actif */
+.flc-sub-nav {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 20px; flex: none;
+  padding: 9px 14px 2px; background: var(--flc-paper); border-bottom: 1px solid var(--flc-g2);
+}
+.flc-sub-nav a {
+  position: relative; padding: 2px 2px 12px; cursor: pointer; text-decoration: none;
+  font-family: var(--flc-head); font-size: 14.5px; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--flc-g6) !important; transition: color .2s;
+}
+.flc-sub-nav a::after {
+  content: ""; position: absolute; left: 50%; bottom: 0; width: 70px; height: 11px;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/endstop.webp") center / contain no-repeat;
+  transform: translateX(-50%) scaleX(0); opacity: 0; transition: transform .3s var(--flc-ease), opacity .3s;
+}
+.flc-sub-nav a:hover { color: var(--flc-ink) !important; text-shadow: none; }
+.flc-sub-nav a.active { color: var(--flc-ink) !important; }
+.flc-sub-nav a.active::after { transform: translateX(-50%) scaleX(1); opacity: 1; }
+
+/* ---------------------------------------------------------------- mise en page */
 .flc-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-
-.flc-scroll { overflow-y: auto; padding: 10px 14px; flex: 1; min-height: 0; }
-.flc-split { overflow: hidden; grid-template-rows: minmax(0, 1fr); display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(320px, 1fr); flex: 1; min-height: 0; }
+.flc-scroll {
+  overflow-y: auto; padding: 14px 18px 22px; flex: 1; min-height: 0; container-type: inline-size;
+  scrollbar-width: thin; scrollbar-color: var(--flc-g4) transparent;
+}
+.flc-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr); grid-template-rows: minmax(0, 1fr); overflow: hidden; }
 .flc-split-even { grid-template-columns: 1fr 1fr; }
-.flc-detail { overflow-y: auto; border-left: 1px solid var(--flc-line); background: var(--flc-paper2); padding: 10px 14px; min-height: 0; }
-
-h2, h3, h4 { font-family: var(--flc-sc); font-weight: normal; color: var(--flc-ink); border: none; margin: 8px 0 4px; }
-.fl-campagne h2 { font-size: 22px; }
-.fl-campagne h3 { font-size: 17px; border-bottom: 1px solid var(--flc-line); padding-bottom: 2px; }
-.fl-campagne h4 { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: #4a4542; margin-top: 12px; }
-.fl-campagne p { margin: 3px 0; line-height: 1.35; }
-.fl-campagne ul { margin: 2px 0 4px; padding-left: 18px; }
-.fl-campagne li { margin: 2px 0; }
-.fl-campagne a { color: var(--flc-accent); cursor: pointer; }
-.flc-hint { color: var(--flc-soft); font-style: italic; font-size: 13px; }
-.flc-sub { color: var(--flc-soft); font-style: italic; margin-top: -2px; }
-.flc-lead { font-size: 15px; }
-.flc-date { font-family: var(--flc-sc); font-size: 16px; }
-.flc-nowrap { white-space: nowrap; }
-
-/* cartes */
-.flc-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; align-content: start; }
-.flc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; align-content: start; }
-.flc-card { border: 1px solid var(--flc-line); border-radius: 4px; padding: 8px 12px; background: var(--flc-paper); box-shadow: 0 1px 2px rgba(0,0,0,.06); }
+.flc-detail {
+  overflow-y: auto; min-height: 0; padding: 14px 20px 22px; background: var(--flc-paper);
+  border-left: 1px solid var(--flc-g2); box-shadow: inset 8px 0 10px -10px rgba(0, 0, 0, .35);
+  scrollbar-width: thin; scrollbar-color: var(--flc-g4) transparent;
+}
+.flc-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-content: start; }
+.flc-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; align-content: start; }
 .flc-wide { grid-column: 1 / -1; }
 .flc-wide2 { grid-column: span 2; }
-.flc-click { cursor: pointer; }
-.flc-click:hover, .flc-card.sel { border-color: var(--flc-accent); }
-.flc-ideas { background: #fff8ef; border-color: #e5c9a0; margin-bottom: 8px; }
+.flc-now { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(270px, 1fr); gap: 14px; align-items: start; }
+.flc-now-main, .flc-now-side { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------------------------------------------------------------- textes */
+.fl-campagne h1, .fl-campagne h2, .fl-campagne h3, .fl-campagne h4 { color: var(--flc-ink); border: 0; font-weight: normal; }
+.fl-campagne h2 { font-family: var(--flc-title); font-size: 24px; line-height: 1.1; text-transform: uppercase; text-align: center; margin: 4px 0 2px; }
+.fl-campagne h3 {
+  font-family: var(--flc-head); font-size: 16.5px; font-weight: bold; text-transform: uppercase; text-align: center;
+  letter-spacing: .3px; margin: 2px 0 8px; line-height: 1.2;
+}
+.fl-campagne h3::after,
+.fl-campagne .flc-fiche h2::after {
+  content: ""; display: block; width: 130px; height: 10px; margin: 4px auto 0;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/endstop.webp") center / contain no-repeat; opacity: .9;
+}
+.fl-campagne h4 {
+  font-family: var(--flc-head); font-size: 13.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--flc-g6);
+  margin: 16px 0 6px; padding-bottom: 2px; border-bottom: 1px solid var(--flc-g2);
+}
+.fl-campagne p { margin: 4px 0; }
+.fl-campagne a { color: var(--flc-accent); cursor: pointer; text-decoration: none; transition: text-shadow .15s, color .15s; }
+.fl-campagne a:hover { text-shadow: 0 0 6px color-mix(in srgb, var(--flc-accent) 55%, transparent); }
+.fl-campagne ul { margin: 4px 0 6px; padding-left: 20px; list-style-type: "✥  "; }
+.fl-campagne ul li::marker { color: var(--flc-g6); font-size: 12px; }
+.fl-campagne li { margin: 3px 0; }
+.fl-campagne ol { margin: 4px 0; padding-left: 22px; }
+.fl-campagne ol li { margin: 6px 0; }
+.fl-campagne code { font-family: var(--flc-ui); background: var(--flc-zebra); padding: 0 4px; border-radius: 3px; }
+.flc-hint { color: var(--flc-g6); font-style: italic; font-size: 13.5px; }
+.flc-sub { color: var(--flc-g6); font-style: italic; text-align: center; margin-top: 0 !important; }
+.flc-lead { font-size: 16px; }
+.flc-date { font-family: var(--flc-head); font-size: 15px; text-transform: uppercase; letter-spacing: .4px; color: var(--flc-g6); }
 .flc-alert { color: var(--flc-accent); font-weight: bold; }
+.flc-nowrap { white-space: nowrap; }
 
-/* tableaux */
-.flc-table { width: 100%; border-collapse: collapse; }
-.flc-table th { text-align: left; font-family: var(--flc-sc); font-weight: normal; font-size: 13px; text-transform: uppercase; color: var(--flc-soft); border-bottom: 1px solid var(--flc-ink); padding: 3px 6px; position: sticky; top: -10px; background: var(--flc-paper); }
-.flc-table td { padding: 5px 6px; border-bottom: 1px solid var(--flc-line); vertical-align: top; }
-.flc-table tr[data-sel] { cursor: pointer; }
-.flc-table tr[data-sel]:hover { background: #faf3ea; }
-.flc-table tr.sel { background: #f6e6dc; }
-.flc-table tr.dead, .dead { opacity: .5; text-decoration: line-through; }
-.flc-table tr.done { opacity: .55; }
-.flc-table tr.due td, .flc-list li.due { color: var(--flc-accent); }
+/* ---------------------------------------------------------------- encadrés (cadre encré de la fiche) */
+.flc-card {
+  position: relative; background: var(--flc-paper); padding: 12px 16px;
+  border: 6px solid transparent;
+  border-image: url("../../../systems/forbidden-lands/assets/journal-art/small-border.webp") 100 / 10px repeat;
+  transition: transform .18s var(--flc-ease), filter .18s;
+}
+.flc-board > .flc-card:hover, .flc-now .flc-card:hover, .flc-card.flc-click:hover { transform: translateY(-1px); filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .12)); }
+.flc-click { cursor: pointer; }
+.flc-card.sel { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--flc-accent) 45%, transparent)); }
+.flc-card.flc-click h3 { font-size: 15px; }
 
-/* fiches */
-.flc-fiche .flc-key { background: var(--flc-paper); border: 1px solid var(--flc-line); border-left: 3px solid var(--flc-ink); padding: 6px 10px; margin: 6px 0; }
-.flc-key p { margin: 4px 0; }
-.flc-key span { display: block; margin-top: 4px; font-family: var(--flc-sc); font-size: 13px; text-transform: uppercase; color: var(--flc-soft); vertical-align: top; }
-.flc-people { list-style: none; padding-left: 0; }
-.flc-people li { padding: 2px 0; border-bottom: 1px dotted var(--flc-line); }
-details.flc-lieu { border-bottom: 1px dotted var(--flc-line); padding: 3px 0; }
-details.flc-lieu summary { cursor: pointer; }
-details.flc-lieu[open] summary { color: var(--flc-accent); }
-details.flc-lieu p { margin-left: 22px; }
-.flc-rumeur { display: block; margin: 3px 0; }
+/* l'étape conseillée : titre rouge, petit corbeau en filigrane */
+.flc-next h3 { color: var(--flc-accent); }
+.flc-next::after {
+  content: ""; position: absolute; right: 6px; bottom: 4px; width: 78px; height: 56px; pointer-events: none; opacity: .13;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/ravens/raven4.webp") center / contain no-repeat;
+}
+.flc-ideas { background: color-mix(in srgb, var(--flc-sand) 18%, var(--flc-paper)); margin-bottom: 10px; }
+.flc-ideas h4 { margin-top: 2px; }
 
-/* étiquettes */
-.flc-tag { font-family: var(--flc-sc); font-size: 11px; text-transform: uppercase; letter-spacing: .4px; border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; color: var(--flc-soft); white-space: nowrap; }
+/* bloc clé d'une fiche (où, veut, envers les PJ) */
+.flc-key {
+  margin: 10px 0; padding: 8px 14px; background: color-mix(in srgb, var(--flc-sand) 12%, var(--flc-paper));
+  border: 6px solid transparent;
+  border-image: url("../../../systems/forbidden-lands/assets/journal-art/small-border.webp") 100 / 10px repeat;
+}
+.flc-key p { margin: 5px 0; }
+.flc-key span { display: block; font-family: var(--flc-head); font-size: 12.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--flc-g6); margin-top: 6px; }
+
+/* ---------------------------------------------------------------- fiches */
+.flc-fiche .flc-sub { margin-bottom: 8px !important; }
+.flc-people { list-style: none !important; padding-left: 0 !important; }
+.flc-people li { padding: 4px 2px; border-bottom: 1px solid var(--flc-g2); font-family: var(--flc-ui); font-size: 14px; }
+.flc-people li:nth-child(odd) { background: var(--flc-zebra); }
+
+/* ---------------------------------------------------------------- tableaux (listes de la fiche) */
+.fl-campagne table.flc-table { width: 100%; border-collapse: collapse; background: transparent; border: 0; margin: 0; font-family: var(--flc-ui); font-size: 14px; }
+.fl-campagne .flc-table :is(thead, tbody, tr) { background: transparent; border: 0; }
+.fl-campagne .flc-table th {
+  position: sticky; top: -14px; z-index: 1; text-align: left; padding: 7px 8px 5px;
+  background: var(--flc-paper); color: var(--flc-ink); text-shadow: none;
+  font-family: var(--flc-ui); font-weight: bold; font-size: 12.5px; text-transform: uppercase; letter-spacing: .3px;
+  border: 0; border-bottom: 2px solid var(--flc-ink);
+}
+.fl-campagne .flc-table td { padding: 6px 8px; vertical-align: top; color: var(--flc-ink); border: 0; border-bottom: 1px solid var(--flc-g2); background: transparent; transition: background .18s, opacity .3s; }
+.fl-campagne .flc-table tbody tr:nth-child(odd) td { background: var(--flc-zebra); }
+.fl-campagne .flc-table td b { font-family: var(--flc-text); font-size: 15px; }
+.fl-campagne .flc-table tr[data-sel] { cursor: pointer; }
+.fl-campagne .flc-table tr[data-sel]:hover td { background: color-mix(in srgb, var(--flc-accent) 7%, var(--flc-paper)); }
+.fl-campagne .flc-table tr.sel td { background: color-mix(in srgb, var(--flc-accent) 12%, var(--flc-paper)); }
+.fl-campagne .flc-table tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--flc-accent); }
+.fl-campagne .flc-table tr.done td, .fl-campagne .flc-table tr.off td { opacity: .45; }
+.fl-campagne .flc-table tr.due td { color: var(--flc-accent); }
+.fl-campagne .flc-table td .flc-hint { font-family: var(--flc-text); }
+.dead { opacity: .5; text-decoration: line-through; }
+.fl-campagne .flc-table tr.dead td { opacity: .5; text-decoration: line-through; }
+
+/* ---------------------------------------------------------------- étiquettes */
+.flc-tag {
+  font-family: var(--flc-ui); font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; vertical-align: middle;
+  border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; color: var(--flc-g6); white-space: nowrap; font-style: normal;
+}
 .flc-tag.mort, .flc-tag.faux { color: var(--flc-accent); }
-.flc-att { font-size: 13px; white-space: nowrap; padding: 0 5px; border-radius: 3px; }
-.flc-att.hostile, .flc-att.ennemi { background: #f2d3cc; color: #7c1606; }
-.flc-att.mefiant { background: #f4e6cc; color: #6d4a07; }
-.flc-att.neutre { background: #ebe8e2; color: #4a4542; }
-.flc-att.amical, .flc-att.allie { background: #dcebd3; color: #2f5320; }
-.flc-status { font-size: 13px; padding: 0 5px; border-radius: 3px; background: #ebe8e2; white-space: nowrap; }
-.flc-status.rumeur { background: #f4e6cc; } .flc-status.visite { background: #dfe7f1; } .flc-status.explore, .flc-status.conquis { background: #dcebd3; }
+.flc-page {
+  font-family: var(--flc-ui); font-size: 10.5px; text-transform: uppercase; letter-spacing: .3px; vertical-align: middle;
+  color: var(--flc-accent); border: 1px solid color-mix(in srgb, var(--flc-accent) 45%, transparent); border-radius: 3px;
+  padding: 0 4px; white-space: nowrap; font-style: normal; font-weight: normal;
+}
+.flc-att {
+  display: inline-block; font-family: var(--flc-ui); font-size: 12px; line-height: 1.5; white-space: nowrap;
+  padding: 0 8px; border-radius: 10px; background: #e6e3de; color: #4a4542; transition: background .25s, color .25s;
+}
+.flc-att.hostile, .flc-att.ennemi { background: #f3d6d0; color: #8a0303; }
+.flc-att.mefiant { background: #f1e4c6; color: #6b4a08; }
+.flc-att.amical, .flc-att.allie { background: #d3ebe7; color: var(--flc-teal-d); }
+.flc-status {
+  display: inline-block; font-family: var(--flc-ui); font-size: 12px; line-height: 1.5; white-space: nowrap; font-weight: normal;
+  padding: 0 8px; border-radius: 10px; background: #e6e3de; color: #4a4542; text-transform: none; letter-spacing: 0; vertical-align: middle;
+  transition: background .25s, color .25s;
+}
+.flc-status.rumeur { background: #f1e4c6; color: #6b4a08; }
+.flc-status.visite { background: #dbe5ef; color: #234a72; }
+.flc-status.explore, .flc-status.conquis { background: #d3ebe7; color: var(--flc-teal-d); }
 
-/* champs */
-.flc-edit { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
-.flc-edit.flc-inline { flex-direction: row; flex-wrap: wrap; gap: 12px; }
-.flc-edit label { display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: var(--flc-soft); }
-.flc-edit.flc-inline label { flex-direction: row; align-items: center; gap: 6px; }
-.flc-check { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: 6px; color: var(--flc-ink) !important; font-size: 14px !important; cursor: pointer; }
-.fl-campagne input[type="text"], .fl-campagne input[type="search"], .fl-campagne input[type="number"], .fl-campagne select, .fl-campagne textarea {
-  font-family: var(--flc-serif); font-size: 14px; color: var(--flc-ink); background: #fff; border: 1px solid #b9b2a8; border-radius: 3px; padding: 3px 6px; }
-.fl-campagne textarea { width: 100%; resize: vertical; }
-.flc-row { display: flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
-.flc-row label { color: var(--flc-soft); }
-.flc-row input[type="text"] { flex: 1; min-width: 180px; }
-.flc-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
-.flc-filters input { flex: 1; min-width: 200px; }
-.flc-prep { display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
-
-/* boutons */
-.fl-campagne button { font-family: var(--flc-serif); font-size: 14px; }
+/* ---------------------------------------------------------------- boutons (comme la fiche) */
+.application.fl-campagne button {
+  font-family: var(--flc-text); font-weight: bold; font-size: 14px; line-height: 1.3; color: var(--flc-ink);
+  background: transparent; border: 1px solid var(--flc-g4); border-radius: 3px; box-shadow: none;
+  padding: 5px 10px; height: auto; min-height: 0; cursor: pointer;
+  transition: background .15s, color .15s, text-shadow .15s, border-color .15s, transform .1s;
+}
+.application.fl-campagne button:hover { background: var(--flc-g2); border-color: var(--flc-g6); text-shadow: 0 0 8px color-mix(in srgb, var(--flc-accent) 55%, transparent); }
+.application.fl-campagne button:active { transform: translateY(1px); }
+.application.fl-campagne button:focus-visible { outline: none; box-shadow: 0 0 8px var(--flc-teal); }
+.application.fl-campagne button.flc-small { font-size: 12.5px; padding: 1px 8px; width: auto; }
+.application.fl-campagne button.flc-official,
+.application.fl-campagne .flc-next .flc-buttons button:first-child { background: var(--flc-g8); color: #fff; border-color: var(--flc-g8); }
+.application.fl-campagne button.flc-official:hover,
+.application.fl-campagne .flc-next .flc-buttons button:first-child:hover { background: #111; text-shadow: 0 0 8px #fff; }
+.application.fl-campagne button.flc-official { width: 100%; margin: 6px 0 4px; }
 .flc-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .flc-buttons button { flex: 1 1 auto; }
-.fl-campagne button.flc-small { font-size: 12px; padding: 0 6px; line-height: 20px; width: auto; }
 
-/* horloges */
-.flc-clock, .flc-clock-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+/* ---------------------------------------------------------------- champs (comme la fiche) */
+.application.fl-campagne :is(input[type="text"], input[type="search"], input[type="number"], select, textarea) {
+  font-family: var(--flc-ui); font-size: 14px; color: var(--flc-ink); background: var(--flc-paper);
+  border: 1px solid var(--flc-g4); border-radius: 3px; box-shadow: inset 0 0 6px var(--flc-g2);
+  padding: 4px 8px; height: auto; min-height: 28px; transition: box-shadow .2s, border-color .2s;
+}
+.application.fl-campagne :is(input[type="text"], input[type="search"], input[type="number"], select, textarea):focus {
+  outline: none; border-color: var(--flc-teal-d); box-shadow: 0 0 10px var(--flc-teal);
+}
+.application.fl-campagne textarea { width: 100%; resize: vertical; line-height: 1.4; }
+.application.fl-campagne :is(input[type="text"], textarea)::placeholder { color: var(--flc-ink); opacity: .45; }
+.application.fl-campagne input[type="checkbox"], .application.fl-campagne input[type="radio"] {
+  accent-color: var(--flc-accent); width: 16px; height: 16px; flex: none; margin: 2px 0 0; cursor: pointer;
+}
+.flc-edit { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
+.flc-edit.flc-inline { flex-direction: row; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.flc-edit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--flc-text); font-weight: bold; font-size: 14px; color: var(--flc-ink); }
+.flc-edit.flc-inline label { flex-direction: row; align-items: center; gap: 8px; }
+.flc-check { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: 8px; cursor: pointer; font-weight: normal !important; font-family: var(--flc-text) !important; font-size: 14.5px !important; color: var(--flc-ink) !important; }
+.flc-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.flc-row > label { font-family: var(--flc-text); font-weight: bold; }
+.flc-row input[type="text"] { flex: 1; min-width: 180px; }
+.flc-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.flc-filters input, .flc-filters select { flex: 1 1 170px; width: auto; }
+.flc-prep { display: flex; flex-direction: column; gap: 2px; margin: 10px 0; font-family: var(--flc-text); }
+.flc-prep b { font-weight: bold; }
+
+/* ---------------------------------------------------------------- lieux et événements dépliables */
+.fl-campagne details.flc-lieu { border-bottom: 1px solid var(--flc-g2); }
+.fl-campagne details.flc-lieu > summary {
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; list-style: none; cursor: pointer; padding: 6px 2px;
+  font-family: var(--flc-ui); font-size: 14px; transition: text-shadow .2s, background .2s;
+}
+.fl-campagne details.flc-lieu > summary::-webkit-details-marker { display: none; }
+.fl-campagne details.flc-lieu > summary::before {
+  content: "▸"; display: inline-block; width: 10px; color: var(--flc-g6); font-size: 12px; transition: transform .2s var(--flc-ease), color .2s;
+}
+.fl-campagne details.flc-lieu[open] > summary::before { transform: rotate(90deg); color: var(--flc-accent); }
+.fl-campagne details.flc-lieu > summary:hover { text-shadow: 0 0 8px var(--flc-teal); background: var(--flc-zebra); }
+.fl-campagne details.flc-lieu > summary b { font-family: var(--flc-text); font-size: 15px; min-width: 0; }
+.fl-campagne details.flc-lieu > summary :is(.flc-page, .flc-tag, .flc-check) { flex: none; }
+.fl-campagne details.flc-lieu[open] > summary b { color: var(--flc-accent); }
+.fl-campagne details.flc-lieu summary .flc-check { display: inline-flex !important; margin: 0; }
+.fl-campagne details.flc-lieu > :not(summary) { margin-left: 22px; }
+.fl-campagne details.flc-lieu[open] > :not(summary) { animation: flc-unfold .25s var(--flc-ease); }
+.fl-campagne details.flc-lieu > button { margin: 2px 0 8px 22px; }
+.flc-rumeur { display: flex; margin: 5px 0; }
+
+/* ---------------------------------------------------------------- « en ce moment » */
+.flc-todo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; font-family: var(--flc-text); }
+.flc-todo a { color: var(--flc-ink) !important; }
+.flc-todo a b { color: var(--flc-accent); font-family: var(--flc-ui); font-weight: bold; font-size: 18px; margin-right: 4px; }
+
+/* ---------------------------------------------------------------- horloges */
+.flc-clock, .flc-clock-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
 .flc-clock-row .flc-clock { flex: 1; }
-.flc-clock-name { flex: 1; }
-.flc-clock-segs { display: inline-flex; gap: 2px; }
-.flc-clock-segs span { width: 16px; height: 16px; border: 1px solid var(--flc-ink); border-radius: 2px; cursor: pointer; background: #fff; }
-.flc-clock-segs span.on { background: var(--flc-accent); border-color: var(--flc-accent); }
+.flc-clock-name { flex: 1; font-family: var(--flc-text); }
+.flc-clock-segs { display: inline-flex; gap: 3px; }
+.flc-clock-segs span {
+  width: 17px; height: 17px; border-radius: 50%; cursor: pointer; background: var(--flc-paper);
+  border: 1.5px solid var(--flc-ink); transition: background .2s, border-color .2s, transform .15s;
+}
+.flc-clock-segs span:hover { transform: scale(1.15); }
+.flc-clock-segs span.on { background: var(--flc-accent); border-color: var(--flc-accent); animation: flc-pop .3s var(--flc-ease); }
+
+/* ---------------------------------------------------------------- page « l'essentiel » */
+.flc-essentiel > * { max-width: 1000px; margin-left: auto; margin-right: auto; }
+.flc-hero { position: relative; text-align: center; padding: 6px 170px 16px; }
+.flc-hero::before {
+  content: ""; display: block; height: 74px; max-width: 620px; margin: 0 auto -4px;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/top_border.webp") center / contain no-repeat;
+}
+.fl-campagne .flc-hero h1 { font-family: var(--flc-title); font-size: 36px; line-height: 1.05; text-transform: uppercase; margin: 6px 0 0; }
+.flc-hero-sub { font-family: var(--flc-head); text-transform: uppercase; letter-spacing: 3px; color: var(--flc-g6); margin: 2px 0 6px !important; }
+.flc-hero-sub::after {
+  content: ""; display: block; width: 150px; height: 11px; margin: 6px auto 0;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/endstop.webp") center / contain no-repeat;
+}
+.flc-hero .flc-lead { font-size: 17.5px; max-width: 640px; margin: 8px auto 0; }
+.flc-hero .flc-raven { position: absolute; right: 4px; top: 14px; width: 155px; pointer-events: none; opacity: .92; animation: flc-raven-in 1s var(--flc-ease); }
+.flc-essentiel .flc-card p { margin: 6px 0; line-height: 1.5; }
+@container (max-width: 760px) {
+  .flc-hero { padding: 6px 12px 14px; }
+  .flc-hero .flc-raven { display: none; }
+  .flc-now { grid-template-columns: 1fr; }
+}
 
 /* écran vide */
-.flc-empty { margin: auto; text-align: center; max-width: 460px; padding: 40px; }
+.flc-empty { margin: auto; text-align: center; max-width: 480px; padding: 30px; }
+.flc-empty .flc-raven { width: 170px; opacity: .9; margin-bottom: 6px; animation: flc-raven-in 1s var(--flc-ease); }
 .flc-empty button { margin-top: 12px; }
-.flc-session textarea { margin-top: 4px; }
 
-/* description officielle */
-.flc-fiche h2 a { color: var(--flc-ink); text-decoration: none; }
-.flc-fiche h2 a:hover { color: var(--flc-accent); }
-.flc-official-ico { font-size: 14px; color: var(--flc-soft); vertical-align: middle; }
-.fl-campagne button.flc-official { width: 100%; margin: 4px 0 6px; background: var(--flc-band); color: #fff; border: none; padding: 4px; }
-.fl-campagne button.flc-official:hover { box-shadow: 0 0 6px var(--flc-accent); }
+/* ---------------------------------------------------------------- guide, recherche, sessions */
+.flc-guide { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--flc-g2); transition: background .2s, opacity .3s; }
+.flc-guide:hover { background: var(--flc-zebra); }
+.flc-guide .flc-check { flex: 1; }
+.flc-guide.done > .flc-check span { opacity: .5; }
+.flc-livre li { margin: 6px 0; }
+.flc-results { list-style: none !important; padding-left: 0 !important; }
+.flc-results li { padding: 5px 4px; border-bottom: 1px solid var(--flc-g2); font-family: var(--flc-ui); font-size: 14px; transition: background .15s; }
+.flc-results li:hover { background: var(--flc-zebra); }
+.flc-session { margin-bottom: 12px; }
+.flc-session h4 { margin-top: 0; }
+.flc-session label.flc-hint { display: block; margin-top: 8px; }
 
-/* Foundry colore les tableaux : on garde le papier de la fiche */
-.fl-campagne table.flc-table, .fl-campagne .flc-table thead, .fl-campagne .flc-table tbody, .fl-campagne .flc-table tr, .fl-campagne .flc-table td, .fl-campagne .flc-table th { background: transparent; color: var(--flc-ink); border-left: none; border-right: none; text-shadow: none; }
-.fl-campagne table.flc-table { border: none; margin: 0; }
-.fl-campagne .flc-table thead tr { background: var(--flc-paper); }
-.fl-campagne .flc-table th { color: var(--flc-soft); background: var(--flc-paper); position: sticky; top: -10px; z-index: 1; }
-.fl-campagne .flc-table tr[data-sel]:hover { background: #faf3ea; }
-.fl-campagne .flc-table tr.sel { background: #f6e6dc; }
-.fl-campagne .flc-table .flc-hint { color: var(--flc-soft); }
-.fl-campagne input[type="checkbox"] { accent-color: var(--flc-accent); width: 16px; height: 16px; flex: none; }
-.fl-campagne .flc-filters select, .fl-campagne .flc-filters input { flex: 1 1 180px; width: auto; }
+/* ---------------------------------------------------------------- vers Vond */
+.flc-assaut { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.flc-total { font-family: var(--flc-ui); font-weight: bold; font-size: 22px; color: var(--flc-accent); margin-left: 6px; vertical-align: middle; }
+.fl-campagne .flc-table td.flc-bonus { font-family: var(--flc-ui); font-weight: bold; font-size: 15px; text-align: right; white-space: nowrap; }
+.flc-fin { padding: 8px 4px; border-bottom: 1px solid var(--flc-g2); transition: background .25s, opacity .3s; }
+.flc-fin.touche, .flc-touche-ex { background: color-mix(in srgb, var(--flc-sand) 30%, var(--flc-paper)); }
+.flc-fin.done { opacity: .55; }
+.flc-fin-who { margin-left: 26px !important; font-family: var(--flc-ui); font-size: 13px; }
 
-/* relations */
-.flc-graph { width: 100%; height: auto; background: var(--flc-paper2); border: 1px solid var(--flc-line); border-radius: 4px; }
-.flc-edge { stroke-width: 1.6; opacity: .55; }
-.flc-edge.allie { stroke: #4b8a35; } .flc-edge.ennemi { stroke: #a00404; } .flc-edge.mixte { stroke: #c98a1a; stroke-dasharray: 5 3; }
-.flc-node { cursor: pointer; }
-.flc-node circle { stroke: var(--flc-ink); stroke-width: 1.2; fill: #ebe8e2; }
+/* ---------------------------------------------------------------- points flous, croyances, secrets */
+.flc-ctr { margin: 8px 0; }
+.flc-ctr.done { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--flc-teal) 40%, transparent)); }
+.flc-ctr > b { display: block; font-family: var(--flc-head); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; }
+.flc-ctr input[type="text"] { width: 100%; margin-top: 6px; }
+.fl-campagne .flc-ver td.flc-croit { font-family: var(--flc-text); font-style: italic; color: #6b4a08; }
+.flc-secret { padding: 4px 0; }
+.flc-secret span { transition: opacity .3s; }
+.flc-secret.su span { opacity: .5; text-decoration: line-through; }
+
+/* ---------------------------------------------------------------- frise */
+.fl-campagne .flc-frise { list-style: none; margin: 0; padding: 0 0 0 160px; position: relative; }
+.flc-frise::before { content: ""; position: absolute; left: 142px; top: 0; bottom: 0; width: 2px; background: var(--flc-ink); opacity: .3; }
+.flc-fr { position: relative; padding: 5px 0 9px 20px; transition: background .2s; }
+.flc-fr:hover { background: var(--flc-zebra); }
+.flc-fr-dot { position: absolute; left: -24px; top: 10px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--flc-ink); background: var(--flc-paper); transition: transform .2s; }
+.flc-fr:hover .flc-fr-dot { transform: scale(1.25); }
+.flc-fr-when { position: absolute; left: -160px; top: 6px; width: 120px; text-align: right; font-family: var(--flc-ui); font-size: 12.5px; color: var(--flc-g6); line-height: 1.2; }
+.flc-fr-what b { font-family: var(--flc-text); font-weight: normal; font-size: 15.5px; }
+.flc-fr.session .flc-fr-dot { background: #4a7fc1; border-color: #234a72; }
+.flc-fr.fait .flc-fr-dot { background: var(--flc-teal-d); border-color: var(--flc-teal-d); }
+.flc-fr.manque .flc-fr-dot { background: #d8a24a; }
+.flc-fr.now { background: color-mix(in srgb, var(--flc-accent) 8%, var(--flc-paper)); border-radius: 3px; }
+.flc-fr.now .flc-fr-dot { background: var(--flc-accent); border-color: var(--flc-accent); width: 16px; height: 16px; left: -26px; top: 8px; animation: flc-pulse 2.4s ease-in-out infinite; }
+.flc-fr.futur .flc-fr-dot { border-style: dashed; }
+.flc-fr.horloge .flc-fr-dot { border-radius: 2px; background: #ecd09a; }
+.flc-fr.livre-futur .flc-fr-dot { background: var(--flc-g2); border-style: dotted; }
+.flc-fr-sec {
+  margin: 18px 0 8px -160px; padding-bottom: 2px; font-family: var(--flc-head); font-size: 15px; text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 1px solid var(--flc-g2);
+}
+.flc-fr-vide { padding: 2px 0 8px 20px; }
+
+/* ---------------------------------------------------------------- relations */
+.flc-graph {
+  width: 100%; height: auto; background: color-mix(in srgb, var(--flc-sand) 10%, var(--flc-paper));
+  border: 6px solid transparent;
+  border-image: url("../../../systems/forbidden-lands/assets/journal-art/small-border.webp") 100 / 10px repeat;
+}
+.flc-edge { stroke-width: 1.6; opacity: .55; transition: opacity .2s, stroke-width .2s; }
+.flc-edge.allie { stroke: var(--flc-teal-d); }
+.flc-edge.ennemi { stroke: var(--flc-accent); }
+.flc-edge.mixte { stroke: #c98a1a; stroke-dasharray: 5 3; }
+.flc-node { cursor: pointer; transition: opacity .2s; }
+.flc-node circle { stroke: var(--flc-ink); stroke-width: 1.3; fill: #e6e3de; }
 .flc-node circle.att-hostile, .flc-node circle.att-ennemi { fill: #e3a597; }
 .flc-node circle.att-mefiant { fill: #ecd09a; }
-.flc-node circle.att-amical, .flc-node circle.att-allie { fill: #a9cf97; }
-.flc-node text { font-family: var(--flc-serif); font-size: 12px; fill: var(--flc-ink); paint-order: stroke; stroke: var(--flc-paper2); stroke-width: 3px; }
-.flc-node.dead { opacity: .45; }
-.flc-graph.focus .flc-edge { opacity: .08; } .flc-graph.focus .flc-node { opacity: .25; }
-.flc-graph.focus .flc-edge.hi { opacity: 1; stroke-width: 2.6; } .flc-graph.focus .flc-node.hi { opacity: 1; }
-.flc-legend { margin-left: auto; font-size: 13px; color: var(--flc-soft); }
-.flc-legend .l { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 3px 0 10px; }
-.flc-legend .l.allie { background: #4b8a35; } .flc-legend .l.ennemi { background: #a00404; } .flc-legend .l.mixte { background: #c98a1a; }
+.flc-node circle.att-amical, .flc-node circle.att-allie { fill: #9fd1c9; }
+.flc-node text { font-family: var(--flc-text); font-size: 12.5px; fill: var(--flc-ink); paint-order: stroke; stroke: var(--flc-paper); stroke-width: 3px; }
+.flc-node.dead { opacity: .4; }
+.flc-graph.focus .flc-edge { opacity: .07; }
+.flc-graph.focus .flc-node { opacity: .2; }
+.flc-graph.focus .flc-edge.hi { opacity: 1; stroke-width: 2.6; }
+.flc-graph.focus .flc-node.hi { opacity: 1; }
+.flc-legend { margin-left: auto; font-family: var(--flc-ui); font-size: 13px; color: var(--flc-g6); }
+.flc-legend .l { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 4px 0 12px; }
+.flc-legend .l.allie { background: var(--flc-teal-d); }
+.flc-legend .l.ennemi { background: var(--flc-accent); }
+.flc-legend .l.mixte { background: #c98a1a; }
 
-/* Vers Vond */
-.flc-assaut { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.flc-total { font-size: 20px; color: var(--flc-accent); margin-left: 4px; }
-.flc-bonus { font-family: var(--flc-sc); font-size: 16px; text-align: right; white-space: nowrap; }
-.fl-campagne .flc-table tr.off td { opacity: .45; }
-.flc-fin { border-bottom: 1px dotted var(--flc-line); padding: 5px 2px; }
-.flc-fin.touche, .flc-touche-ex { background: #fff3d6; }
-.flc-fin.done { opacity: .55; }
-.flc-fin-who { margin-left: 24px !important; font-size: 13px; }
+/* ---------------------------------------------------------------- fenêtres de dialogue du module */
+.flc-dlg { font-family: "IM Fell Great Primer", "IM Fell DW Pica", Georgia, serif; font-size: 15px; }
+.flc-dlg .flc-hint { color: #707070; font-style: italic; font-size: 13px; }
+.flc-dlg .flc-check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.flc-rumeur-txt { font-size: 18px; font-style: italic; margin: 10px 0; text-align: center; }
 
-/* dialogues */
-.flc-dlg { font-family: "IM Fell DW Pica", Georgia, serif; font-size: 15px; }
-.flc-dlg .flc-hint { color: #77706a; font-style: italic; font-size: 13px; }
-.flc-dlg .flc-check { display: flex; gap: 6px; align-items: flex-start; margin: 5px 0; }
-.flc-rumeur-txt { font-size: 17px; font-style: italic; margin: 8px 0; }
-.flc-session label.flc-hint { display: block; margin-top: 6px; }
+/* personnage surligné dans le livre */
+.flc-flash { background: #fff1a8 !important; color: #222 !important; outline: 3px solid #fff1a8; transition: background 1s; }
 
-/* pages du livre */
-.flc-page { font-family: var(--flc-sc); font-size: 11px; color: var(--flc-accent); border: 1px solid #d9a7a0; border-radius: 3px; padding: 0 4px; white-space: nowrap; font-style: normal; font-weight: normal; vertical-align: middle; }
-/* recherche */
-.fl-campagne .flc-nav { align-items: center; }
-.fl-campagne input.flc-search { margin-left: auto; width: 210px; height: 26px; background: #fff; border: 1px solid #777; border-radius: 3px; font-size: 14px; }
-.flc-results { list-style: none; padding-left: 0 !important; }
-.flc-results li { padding: 3px 0; border-bottom: 1px dotted var(--flc-line); }
-/* points flous */
-.flc-ctr { margin: 6px 0; }
-.flc-ctr.done { border-left: 3px solid #4b8a35; }
-.flc-ctr input[type="text"] { width: 100%; margin-top: 4px; }
-.fl-campagne input[type="radio"] { accent-color: var(--flc-accent); flex: none; margin-top: 3px; }
+/* ---------------------------------------------------------------- animations */
+@keyframes flc-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flc-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes flc-unfold { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes flc-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes flc-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--flc-accent) 45%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes flc-raven-in { from { opacity: 0; transform: translate(16px, -12px) rotate(4deg); } to { opacity: .92; transform: none; } }
+.flc-enter { animation: flc-enter .26s var(--flc-ease); }
 
-/* frise */
-.flc-frise { list-style: none; margin: 0; padding: 0 0 0 150px; position: relative; }
-.flc-frise::before { content: ""; position: absolute; left: 132px; top: 0; bottom: 0; width: 2px; background: var(--flc-ink); opacity: .35; }
-.flc-fr { position: relative; padding: 4px 0 8px 18px; }
-.flc-fr-dot { position: absolute; left: -24px; top: 9px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--flc-ink); background: #fff; }
-.flc-fr-when { position: absolute; left: -150px; top: 5px; width: 115px; text-align: right; font-size: 12px; color: var(--flc-soft); font-style: italic; line-height: 1.2; }
-.flc-fr.session .flc-fr-dot { background: #4a7fc1; } .flc-fr.fait .flc-fr-dot { background: #4b8a35; } .flc-fr.manque .flc-fr-dot { background: #d8a24a; }
-.flc-fr.now .flc-fr-dot { background: var(--flc-accent); border-color: var(--flc-accent); width: 16px; height: 16px; left: -26px; top: 7px; }
-.flc-fr.now { background: #fbeeea; border-radius: 3px; }
-.flc-fr.futur .flc-fr-dot { background: #fff; border-style: dashed; } .flc-fr.horloge .flc-fr-dot { border-radius: 2px; background: #ecd09a; }
-.flc-fr.livre-futur { opacity: .85; } .flc-fr.livre-futur .flc-fr-dot { background: #ebe8e2; border-style: dotted; }
-.flc-fr-sec { margin: 14px 0 6px -150px; font-family: var(--flc-sc); text-transform: uppercase; letter-spacing: .5px; font-size: 14px; border-bottom: 1px solid var(--flc-line); }
-.flc-fr-vide { padding: 2px 0 8px 18px; }
-/* croyances */
-.flc-ver td.flc-croit { font-style: italic; color: #6d4a07; }
-.fl-campagne .flc-ver tr.done td { opacity: .5; }
-.flc-secret { padding: 3px 0; } .flc-secret.su span { opacity: .5; text-decoration: line-through; }
-
-/* guide */
-.flc-next { border-color: var(--flc-accent); border-left: 4px solid var(--flc-accent); }
-.flc-guide { display: flex; align-items: flex-start; gap: 8px; padding: 6px 4px; border-bottom: 1px dotted var(--flc-line); }
-.flc-guide .flc-check { flex: 1; }
-.flc-guide.done span { opacity: .5; }
-.flc-livre li { margin: 4px 0; }
-
-/* ---- navigation à deux niveaux ---- */
-.fl-campagne .flc-tab { font-size: 15px; padding: 9px 14px 7px; }
-.flc-sub-nav { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px 10px; background: #ebe6dc; border-bottom: 1px solid var(--flc-line); flex: none; }
-.flc-sub-nav a { color: var(--flc-ink) !important; padding: 3px 10px; border-radius: 3px; font-size: 14px; cursor: pointer; text-decoration: none; }
-.flc-sub-nav a:hover { background: #fff; }
-.flc-sub-nav a.active { background: var(--flc-ink); color: #fff !important; }
-/* ---- l'essentiel ---- */
-.flc-essentiel { max-width: 980px; }
-.flc-hero { text-align: center; padding: 6px 30px 10px; }
-.flc-hero .flc-lead { font-size: 17px; }
-.flc-essentiel .flc-card p { margin: 6px 0; line-height: 1.45; }
-.flc-essentiel ol li { margin: 5px 0; }
-/* ---- en ce moment ---- */
-.flc-now { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 12px; align-items: start; }
-.flc-now-main, .flc-now-side { display: flex; flex-direction: column; gap: 12px; }
-.flc-todo { display: flex; flex-direction: column; gap: 4px; margin-bottom: 6px; }
-.flc-todo a { color: var(--flc-ink) !important; }
-.flc-todo a b { color: var(--flc-accent); font-size: 17px; }
-
-/* surlignage du personnage dans le livre */
-.flc-flash { background: #fff1a8 !important; color: #222 !important; transition: background 1s; outline: 3px solid #fff1a8; }
-
-/* lieux et événements : la case ne prend que sa place, le reste de la ligne ouvre la section */
-.fl-campagne details.flc-lieu summary .flc-check { display: inline-flex !important; vertical-align: middle; margin: 0 4px 0 0; }
-.fl-campagne details.flc-lieu summary { list-style-position: inside; padding: 2px 0; }
+@media (prefers-reduced-motion: reduce) {
+  .fl-campagne *, .fl-campagne *::before, .fl-campagne *::after { animation: none !important; transition: none !important; }
+}

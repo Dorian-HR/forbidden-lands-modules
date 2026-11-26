@@ -6,6 +6,8 @@
  * événements faits, sessions…) est gardé dans le monde.
  */
 const MOD = "fl-campagne";
+/** Les illustrations du système Forbidden Lands (déjà installées avec lui). */
+const SYS_ART = "systems/forbidden-lands/assets/journal-art";
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const arr = (x) => (Array.isArray(x) ? x : x ? [x] : []);
 const norm = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -468,6 +470,64 @@ function guideItems(I, e) {
 }
 const goAttr = (c) => c.site ? `data-sel="site:${c.site}"` : `data-tab-go="${c.aller ?? "tableau"}"`;
 
+/* -------------------------------------------- */
+/*  Affichage fluide : on ne remplace que ce qui change */
+/* -------------------------------------------- */
+
+/** Clé d'un élément pour le retrouver d'un rafraîchissement à l'autre (lignes, fiches, champs…). */
+const MORPH_KEYS = ["data-k", "data-sel", "data-node", "data-tab", "data-path", "data-clock", "data-official"];
+function morphKey(n) {
+  if (n.nodeType !== 1) return null;
+  for (const a of MORPH_KEYS) { const v = n.getAttribute(a); if (v != null) return `${n.tagName}|${a}|${v}`; }
+  return null;
+}
+const sameKind = (a, b) => a.nodeType === b.nodeType && (a.nodeType !== 1 || a.tagName === b.tagName);
+/** Met l'élément vivant « from » à l'image de « to », sans le recréer. */
+function morphNode(from, to) {
+  if (from.nodeType === 3 || from.nodeType === 8) { if (from.nodeValue !== to.nodeValue) from.nodeValue = to.nodeValue; return; }
+  // attributs (on ne referme jamais une section que l'utilisateur a ouverte)
+  for (const { name } of [...from.attributes]) if (!to.hasAttribute(name) && !(name === "open" && from.tagName === "DETAILS")) from.removeAttribute(name);
+  for (const { name, value } of [...to.attributes]) if (from.getAttribute(name) !== value) from.setAttribute(name, value);
+  const focused = from === document.activeElement;
+  if (from.tagName === "INPUT") {
+    if (from.type === "checkbox" || from.type === "radio") { const c = to.hasAttribute("checked"); if (from.checked !== c) from.checked = c; }
+    else if (!focused) { const v = to.getAttribute("value") ?? ""; if (from.value !== v) from.value = v; }
+    return;
+  }
+  if (from.tagName === "TEXTAREA") { if (!focused && from.value !== to.value) from.value = to.value; if (from.textContent !== to.textContent) from.textContent = to.textContent; return; }
+  morphChildren(from, to);
+  if (from.tagName === "SELECT" && !focused) {
+    const opt = [...to.options].find((o) => o.hasAttribute("selected")) ?? to.options[0];
+    if (opt && from.value !== opt.value) from.value = opt.value;
+  }
+}
+function morphChildren(from, to) {
+  const keyed = new Map();
+  for (let n = from.firstChild; n; n = n.nextSibling) { const k = morphKey(n); if (k && !keyed.has(k)) keyed.set(k, n); }
+  let cur = from.firstChild;
+  for (const t of [...to.childNodes]) {
+    const k = morphKey(t);
+    let match = null;
+    if (k && keyed.has(k)) { match = keyed.get(k); keyed.delete(k); }
+    else if (!k && cur && !morphKey(cur) && sameKind(cur, t)) match = cur;
+    if (match && !sameKind(match, t)) match = null;
+    if (match) {
+      if (match === cur) cur = cur.nextSibling;
+      else from.insertBefore(match, cur);
+      morphNode(match, t);
+    } else from.insertBefore(t, cur);
+  }
+  while (cur) { const next = cur.nextSibling; from.removeChild(cur); cur = next; }
+}
+/** Rejoue une petite animation CSS sur un élément. */
+function replay(el, cls) {
+  if (!el) return;
+  el.classList.remove(cls);
+  void el.offsetWidth;
+  el.classList.add(cls);
+  el.addEventListener("animationend", () => el.classList.remove(cls), { once: true });
+}
+
 /** Cinq rubriques, chacune avec quelques onglets. */
 const SECTIONS = [
   ["commencer", "Avant de commencer", "fa-solid fa-flag", [["essentiel", "L'essentiel"], ["guide", "Guide pas à pas"]]],
@@ -497,30 +557,36 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const e = current();
     if (!I.sites.length && !I.majeurs.length) return this.#empty();
     const cur = this.tab === "recherche" ? null : sectionOf(this.tab);
-    const nav = SECTIONS.map(([id, label, icon, tabs]) => `<a class="flc-tab${cur?.[0] === id ? " active" : ""}" data-tab="${tabs[0][0]}"><i class="${icon}"></i> ${label}</a>`).join("");
+    const nav = SECTIONS.map(([id, label, icon, tabs]) => `<a class="flc-tab${cur?.[0] === id ? " active" : ""}" data-tab="${tabs[0][0]}"><span>${label}</span></a>`).join("");
     const sub = cur && cur[3].length > 1 ? `<nav class="flc-sub-nav">${cur[3].map(([id, label]) => `<a class="${this.tab === id ? "active" : ""}" data-tab="${id}">${label}</a>`).join("")}</nav>` : "";
     const body = ({ tableau: () => this.#tableau(I, e), essentiel: () => this.#essentiel(I, e), qui: () => this.#qui(I, e), sites: () => this.#sites(I, e), acteurs: () => this.#acteurs(I, e), relations: () => this.#relations(I, e), vond: () => this.#vond(I, e), tresors: () => this.#tresors(I, e), frise: () => this.#frise(I, e), guide: () => this.#guide(I, e), verites: () => this.#verites(I, e), contradictions: () => this.#contradictions(I, e), recherche: () => this.#recherche(I, e),
       artefacts: () => this.#artefacts(I, e), legendes: () => this.#legendes(I, e), temps: () => this.#temps(I, e), sessions: () => this.#sessions(I, e), pj: () => this.#pj(I, e) })[this.tab]();
     return `<nav class="flc-nav">${nav}<input type="search" class="flc-search" placeholder="Rechercher partout…" value="${esc(this.q)}" data-q></nav>${sub}<section class="flc-body">${body}</section>`;
   }
   _replaceHTML(html, content) {
-    const sameTab = this._lastTab === this.tab, sameSel = sameTab && this._lastSel === this.sel;
-    const scroll = content.querySelector(".flc-scroll")?.scrollTop ?? 0;
-    const scroll2 = content.querySelector(".flc-detail")?.scrollTop ?? 0;
-    const opened = new Set([...content.querySelectorAll("details[open][data-k]")].map((d) => d.dataset.k));
-    // le champ où l'on écrivait, pour y remettre le curseur
+    const tabChanged = this._lastTab !== this.tab;
+    const selChanged = this._lastSel !== this.sel;
+    // le champ où l'on écrivait : s'il venait à disparaître, on y remet le curseur
     const act = content.contains(document.activeElement) ? document.activeElement : null;
     let focusSel = null, caret = null;
-    if (act) for (const at of ["data-path", "data-filter", "data-q", "data-session", "data-session-j", "data-new", "data-rel-site", "data-ver-site", "data-tr-filtre"]) {
+    if (act) for (const at of ["data-path", "data-filter", "data-q", "data-session", "data-session-j", "data-new"]) {
       if (act.hasAttribute(at)) { const v = act.getAttribute(at); focusSel = v ? `[${at}="${CSS.escape(v)}"]` : `[${at}]`; break; }
     }
     try { if (act && typeof act.selectionStart === "number") caret = [act.selectionStart, act.selectionEnd]; } catch { caret = null; }
-    content.innerHTML = html;
-    if (sameTab) { const a = content.querySelector(".flc-scroll"); if (a) a.scrollTop = scroll; }
-    if (sameSel) { const b = content.querySelector(".flc-detail"); if (b) b.scrollTop = scroll2; }
-    for (const d of content.querySelectorAll("details[data-k]")) if (opened.has(d.dataset.k)) d.open = true;
-    const f = focusSel && content.querySelector(focusSel);
-    if (f) { f.focus({ preventScroll: true }); if (caret) try { f.setSelectionRange(caret[0], caret[1]); } catch { /* champ sans curseur */ } }
+    const tpl = document.createElement("template");
+    tpl.innerHTML = html;
+    morphChildren(content, tpl.content);
+    if (tabChanged) {
+      for (const el of content.querySelectorAll(".flc-scroll, .flc-detail")) el.scrollTop = 0;
+      replay(content.querySelector(".flc-body"), "flc-enter");
+    } else if (selChanged) {
+      const d = content.querySelector(".flc-detail");
+      if (d) { d.scrollTop = 0; replay(d.firstElementChild, "flc-enter"); }
+    }
+    if (focusSel && !content.contains(document.activeElement)) {
+      const f = content.querySelector(focusSel);
+      if (f) { f.focus({ preventScroll: true }); if (caret) try { f.setSelectionRange(caret[0], caret[1]); } catch { /* champ sans curseur */ } }
+    }
     this._lastTab = this.tab; this._lastSel = this.sel;
   }
 
@@ -528,7 +594,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
   _onClose(options) { flushEtat(); return super._onClose?.(options); }
 
   #empty() {
-    return `<div class="flc-empty"><h2>Aucune campagne chargée</h2>
+    return `<div class="flc-empty"><img class="flc-raven" src="${SYS_ART}/ravens/raven2.webp" alt=""><h2>Aucune campagne chargée</h2>
       <p>Importez le fichier de campagne (<code>campagne-corbeau.json</code>) que Claude vous a préparé. Il reste dans votre monde, jamais en ligne.</p>
       <button type="button" data-act="import"><i class="fa-solid fa-file-import"></i> Importer la campagne</button></div>`;
   }
@@ -987,7 +1053,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const groups = [...new Set(arr(E.sites).map((x) => x.groupe))];
     const firstSentence = (t) => String(t ?? "").replace(/^Emplacement suggéré\s*:\s*/i, "").split(/(?<=\.)\s/)[0];
     return `<div class="flc-scroll flc-essentiel">
-      <div class="flc-hero"><h2>Le Châtiment du Corbeau en cinq minutes</h2><p class="flc-lead">${esc(E.en_une_phrase ?? "")}</p></div>
+      <div class="flc-hero"><img class="flc-raven" src="${SYS_ART}/ravens/raven7.webp" alt=""><h1>Le Châtiment du Corbeau</h1><p class="flc-hero-sub">en cinq minutes</p><p class="flc-lead">${esc(E.en_une_phrase ?? "")}</p></div>
       <div class="flc-board">
         <div class="flc-card flc-wide"><h3>1. L'histoire</h3>${arr(E.histoire).map((x) => `<p>${esc(x)}</p>`).join("")}</div>
         <div class="flc-card flc-wide"><h3>2. Ce que doivent faire les PJ</h3><p>${esc(E.but_des_pj ?? "")}</p>
@@ -1191,7 +1257,7 @@ class CampagneApp extends foundry.applications.api.ApplicationV2 {
     const badge = (id) => { const w = etatDe(id); if (!w) return ""; return `<span class="flc-att ${w.relation}">${lab(ATTITUDES, w.relation)}</span>${w.vie !== "vivant" ? ` <span class="flc-tag">${lab(VIE, w.vie)}</span>` : ""}`; };
     const row = (side, x, i, on) => `<tr class="${on ? "" : "off"}"><td><input type="checkbox" data-path="assaut.${side}.${i}" ${on ? "checked" : ""}></td>
       <td><b>${x.acteur && maj(x.acteur) ? `<a data-sel="majeur:${x.acteur}">${esc(x.qui)}</a>` : esc(x.qui)}</b>${x.condition ? `<br><span class="flc-hint">${esc(x.condition)}</span>` : ""}</td>
-      <td>${x.acteur ? badge(x.acteur) : ""}</td><td class="flc-bonus">${x.bonus > 0 ? "+" : ""}${x.bonus ?? ""}</td><td class="flc-hint">${x.page ? `p. ${x.page}` : ""}</td></tr>`;
+      <td>${x.acteur ? badge(x.acteur) : ""}</td><td class="flc-bonus">${x.bonus > 0 ? "+" : ""}${x.bonus ?? ""}</td><td class="flc-hint flc-nowrap">${x.page ? `p. ${x.page}` : ""}</td></tr>`;
     const def = arr(A.defense), att = arr(A.attaque);
     const totDef = (A.defense_base ?? 0) + def.reduce((t, x, i) => t + (defOn(x, i) ? Number(x.bonus) || 0 : 0), 0);
     const totAtt = (A.attaque_base ?? 0) + att.reduce((t, x, i) => t + (attOn(x, i) ? Number(x.bonus) || 0 : 0), 0);
