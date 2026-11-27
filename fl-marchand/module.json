@@ -1,7 +1,7 @@
 {
   "id": "fl-marchand",
   "title": "Forbidden Lands – Le Marchand",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Tous les prix du Manuel du joueur, des échoppes par lieu (ce qu'on y trouve ou pas), la disponibilité des objets inhabituels et rares tirée chaque semaine, des prix qui varient selon le lieu et la rareté avec l'explication de chaque prix, les achats et les ventes des joueurs validés par le MJ (argent retiré, monnaie rendue, objets ajoutés à la fiche) et l'auberge pour tout le groupe.",
   "authors": [
     {

@@ -190,7 +190,9 @@ async function donnerObjet(actor, t, qte) {
   return { cree: true, trouve };
 }
 const voieOr = (actor) => actor?.items?.find((i) => i.type === "talent" && /voie de l or|path of gold/.test(norm(i.name)));
-const persos = () => game.actors.filter((a) => a.type === "character" && (game.user.isGM ? a.hasPlayerOwner : a.isOwner));
+/** Le MJ voit tous les personnages (ceux des joueurs d'abord) ; un joueur ne voit que les siens. */
+const persos = () => game.actors.filter((a) => a.type === "character" && (game.user.isGM || a.isOwner))
+  .sort((x, y) => (y.hasPlayerOwner - x.hasPlayerOwner) || x.name.localeCompare(y.name));
 const vol = (actor) => Number(actor?.system?.bio?.willpower?.value) || 0;
 
 /* ------------------------------------------------------------------ achats et ventes */
@@ -413,7 +415,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       <tbody>${liste.map((t) => this.#ligne(t, lieu, opts)).join("")}</tbody></table>`;
   }
   #persoSelect(path, valeur, liste = persos()) {
-    if (!liste.length) return `<p class="flm-alert">Aucun personnage ${game.user.isGM ? "de joueur" : "à vous"}.</p>`;
+    if (!liste.length) return `<p class="flm-alert">Aucun personnage ${game.user.isGM ? "" : "à vous"}.</p>`;
     return `<select data-path="${path}">${liste.map((a) => `<option value="${a.id}" ${a.id === valeur ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select>`;
   }
 
@@ -506,7 +508,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
   #auberge() {
     const e = etat(); const lieu = this.lieuBoutique ?? (this.lieuVu ? e.lieux[this.lieuVu] : null);
     const liste = persos();
-    this.aub.persos ??= liste.map((a) => a.id);
+    this.aub.persos ??= liste.filter((a) => a.hasPlayerOwner).map((a) => a.id);
     const choix = (path, cat, noms, vide) => `<select data-aub="${path}"><option value="">${vide}</option>${noms.map((n) => { const t = T.get(`${cat}:${n}`); const st = statut(t, lieu);
       return `<option value="${esc(n)}" ${this.aub[path] === n ? "selected" : ""}>${esc(n)} — ${prixTxt(prix(t, lieu).c)}${st.ok ? "" : " (indisponible)"}</option>`; }).join("")}</select>`;
     const items = [[this.aub.nuit, "auberge"], [this.aub.repas, "auberge"], [this.aub.boisson, "auberge"], [this.aub.bain ? "Bain dans une auberge" : "", "auberge"]].filter(([n]) => n).map(([n, c]) => T.get(`${c}:${n}`));
