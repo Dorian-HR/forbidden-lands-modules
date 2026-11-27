@@ -239,6 +239,24 @@ async function habillerGardes() {
 const ATTR = ["strength", "agility", "wits", "empathy"];
 const COMP = { melee: "Mêlée", marksmanship: "Tir", endurance: "Endurance", survival: "Survie", scouting: "Repérage", insight: "Intuition", might: "Puissance", move: "Mouvement", stealth: "Furtivité", healing: "Soins", manipulation: "Manipulation", lore: "Érudition", "animal-handling": "Dressage", crafting: "Artisanat", "sleight-of-hand": "Dextérité", performance: "Représentation" };
 /** Crée la fiche de PNJ d'un garde : PNJ « Soldat » du Guide du MJ (p. 183) ajusté, avec son histoire et son équipement. */
+/** Crée les fiches manquantes des gardes, une par une : une erreur sur l'une n'arrête pas les autres. */
+let CREATION = false;
+async function creerToutesLesFiches() {
+  if (CREATION) return; CREATION = true;
+  try {
+    await indexCompendiums();
+    const manquants = GARDES.filter((g) => !game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id));
+    if (!manquants.length) { await game.settings.set(MOD, "gardesCrees2", true); return; }
+    ui.notifications.info(`Le Marchand : création de ${manquants.length} fiches de gardes du corps, patientez…`);
+    let n = 0; const ko = [];
+    for (const g of manquants) {
+      try { await ficheGarde(g, null, false); n++; if (n % 5 === 0) ui.notifications.info(`Gardes du corps : ${n} / ${manquants.length}…`); }
+      catch (err) { ko.push(g.nom); console.error(`fl-marchand | fiche de ${g.nom}`, err); }
+    }
+    if (!ko.length) await game.settings.set(MOD, "gardesCrees2", true);
+    ui.notifications[ko.length ? "warn" : "info"](`Le Marchand : ${n} fiches créées dans le dossier « Gardes du corps ».${ko.length ? ` Échec pour : ${ko.join(", ")} (voir la console F12).` : ""}`);
+  } finally { CREATION = false; }
+}
 async function dossierGardes() {
   return game.folders.find((f) => f.type === "Actor" && f.name === "Gardes du corps") ?? Folder.create({ name: "Gardes du corps", type: "Actor" });
 }
@@ -253,7 +271,10 @@ async function ficheGarde(g, employeur = null, ouvrir = true) {
   ATTR.forEach((k, i) => { system.attribute[k] = { value: g.attr[i], max: g.attr[i] }; });
   for (const [k, v] of Object.entries(g.comp)) system.skill[k] = { value: v };
   const actor = await Actor.create({ name: g.nom, type: "character", system, folder, flags: { [MOD]: { garde: g.id } }, img: portraitDe(g.id), prototypeToken: { name: g.nom, texture: { src: jetonDe(g.id) } } });
-  for (const nom of g.equip) { const t = TARIFS.find((x) => x.nom === nom); if (t) await donnerObjet(actor, t, 1); }
+  for (const nom of g.equip) {
+    const t = TARIFS.find((x) => x.nom === nom);
+    try { if (t) await donnerObjet(actor, t, 1); } catch (err) { console.warn(`fl-marchand | ${g.nom} : ${nom} non ajouté`, err); }
+  }
   if (ouvrir) actor.sheet?.render(true);
   return actor;
 }
@@ -1064,12 +1085,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       case "semaine": { const e = etat(); e.semaine = (e.semaine ?? 0) + 1; await saveEtat(e); await majStocks({ tous: true }); return this.render(); }
       case "ouvrir": return this.#ouvrir(etat().ouvert === this.lieuVu ? null : this.lieuVu);
       case "salaires": await payerSalaires({ force: true }); return this.render();
-      case "toutes-fiches": {
-        if (!(await DV().confirm({ window: { title: "Fiches des gardes du corps" }, content: `<p>Créer les fiches de PNJ des ${GARDES.length} gardes du corps (dans un dossier « Gardes du corps ») ? Celles qui existent déjà ne sont pas refaites.</p>` }))) return;
-        let n = 0;
-        for (const g of GARDES) { if (!game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id)) { await ficheGarde(g, null, false); n++; } }
-        return ui.notifications.info(`${n} fiche(s) créée(s) dans le dossier « Gardes du corps ».`);
-      }
+      case "toutes-fiches": await creerToutesLesFiches(); await habillerGardes(); return;
       case "autres-gardes": { const e = etat(); const l = e.lieux[this.#lieuCourant()?.id]; if (!l) return; assignerGardes(e, l); await saveEtat(e); return this.render(); }
       case "carnet-vider": {
         if (!(await DV().confirm({ window: { title: "Vider le carnet" }, content: "<p>Effacer tout le carnet de dépenses ?</p>" }))) return;
@@ -1330,7 +1346,7 @@ function open() { app ??= new MarchandApp(); app.render({ force: true }); }
 Hooks.once("init", () => {
   game.settings.register(MOD, "etat", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
   game.settings.register(MOD, "portraits", { name: "Dossier des portraits des gardes", hint: "Les portraits sont fournis avec le module. Pour en mettre d'autres, indiquez ici un dossier de vos données Foundry avec des images nommées comme les gardes (brenna.webp, orvik.png…).", scope: "world", config: true, type: String, default: "fl-portraits/gardes", onChange: () => chercherPortraits().then(appMaj) });
-  game.settings.register(MOD, "gardesCrees", { scope: "world", config: false, type: Boolean, default: false });
+  game.settings.register(MOD, "gardesCrees2", { scope: "world", config: false, type: Boolean, default: false });
   game.settings.register(MOD, "regles", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
   game.keybindings.register(MOD, "open", { name: "Ouvrir le Marchand", editable: [{ key: "KeyM", modifiers: ["Alt"] }], onDown: () => { open(); return true; } });
 });
@@ -1339,12 +1355,7 @@ Hooks.once("ready", () => {
   if (isActiveGM()) setTimeout(async () => {
     verifierCommandes(); payerSalaires(); await chercherPortraits();
     // Première fois : les fiches des gardes du corps sont créées toutes seules, dans le dossier « Gardes du corps ».
-    if (!game.settings.get(MOD, "gardesCrees")) {
-      let n = 0;
-      for (const g of GARDES) if (!game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id)) { await ficheGarde(g, null, false); n++; }
-      await game.settings.set(MOD, "gardesCrees", true);
-      if (n) ui.notifications.info(`Le Marchand : ${n} fiches de gardes du corps créées dans le dossier « Gardes du corps ».`);
-    }
+    if (!game.settings.get(MOD, "gardesCrees2")) await creerToutesLesFiches();
     await habillerGardes();
   }, 2000);
 });
