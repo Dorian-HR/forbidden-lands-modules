@@ -354,7 +354,8 @@ async function donnerObjet(actor, t, qte) {
 }
 const voieOr = (actor) => actor?.items?.find((i) => i.type === "talent" && /voie de l or|path of gold/.test(norm(i.name)));
 /** Le MJ voit tous les personnages (ceux des joueurs d'abord) ; un joueur ne voit que les siens. */
-const persos = () => game.actors.filter((a) => a.type === "character" && (game.user.isGM || a.isOwner))
+const estPNJ = (a) => a.system?.subtype?.type === "npc" || !!a.getFlag?.(MOD, "garde");
+const persos = () => game.actors.filter((a) => a.type === "character" && !estPNJ(a) && (game.user.isGM || a.isOwner))
   .sort((x, y) => (y.hasPlayerOwner - x.hasPlayerOwner) || x.name.localeCompare(y.name));
 const vol = (actor) => Number(actor?.system?.bio?.willpower?.value) || 0;
 const MATIERES = TARIFS.filter((t) => t.cat === "matieres");
