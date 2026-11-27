@@ -540,3 +540,11 @@
 .fl-marchand .flm-plus { color: var(--flm-teal-d); }
 .application.fl-marchand .flm-ovr input[type=number] { width: 54px; height: 22px; }
 .application.fl-marchand .flm-fact input[type=text] { width: auto; flex: 1; }
+/* gardes du corps */
+.flm-gardes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; margin: 6px 0 16px; }
+.flm-garde p { margin: 5px 0; font-size: 14px; }
+.flm-garde .flm-sub { margin-top: -4px !important; }
+.flm-quote { font-style: italic; text-align: center; color: var(--flm-g8); font-size: 15px !important; }
+.flm-secret { background: color-mix(in srgb, var(--flm-accent) 8%, var(--flm-paper)); border-left: 3px solid var(--flm-accent); padding: 3px 8px; }
+.flm-garde .flm-buttons { justify-content: center; }
+.flm-portrait { display: block; width: 120px; height: 160px; object-fit: cover; margin: 0 auto 6px; border: 3px solid var(--flm-g8); box-shadow: 0 2px 6px rgba(0,0,0,.3); }

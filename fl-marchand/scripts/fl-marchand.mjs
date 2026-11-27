@@ -3,6 +3,7 @@
 // achats, ventes, troc et commandes validés par le MJ, trouvailles à revendre, journaliers, auberge, carnet de dépenses,
 // et l'explication de chaque prix.
 import { TARIFS, CATEGORIES, ETABS, DISPO, FACTEURS, FAB, TRESORS, JOURNALIERS } from "./tarifs.mjs";
+import { GARDES, promptImage } from "./gardes.mjs";
 
 const MOD = "fl-marchand";
 const SYS_ART = "systems/forbidden-lands/assets/journal-art";
@@ -14,6 +15,10 @@ const FACT = Object.fromEntries(FACTEURS.map(([id, label, pct]) => [id, { label,
 const CAT = Object.fromEntries(CATEGORIES.map(([id, label]) => [id, label]));
 const JOUR = Object.fromEntries(JOURNALIERS.map(([nom, salaire, dispo, role]) => [nom, { nom, salaire, dispo, role }]));
 const rid = () => foundry.utils.randomID();
+/** « à » + nom de lieu, avec la contraction : aux Fossés, au Pic d'Ambre, à la Vallée, à Vond. */
+const aLieu = (nom) => { const n = String(nom ?? ""); const m = n.match(/^(Les|Le|La|L')\s?(.*)$/); if (!m) return `à ${n}`;
+  return { Les: `aux ${m[2]}`, Le: `au ${m[2]}`, La: `à la ${m[2]}`, "L'": `à l'${m[2]}` }[m[1]]; };
+const GARDE = Object.fromEntries(GARDES.map((g) => [g.id, g]));
 const DAY = 86400;
 
 /** Réglages maison selon la taille du lieu : stock de chaque objet courant et bourse du marchand (en cuivre). */
@@ -144,6 +149,7 @@ function tirerStock(lieu, cle) {
 async function majStocks({ tous = false } = {}) {
   if (!isActiveGM()) return false;
   const e = etat(); const { cle } = semaine(); let chg = false;
+  for (const id of e.ordre) if (e.lieux[id] && !e.lieux[id].gardes) { assignerGardes(e, e.lieux[id]); chg = true; }
   for (const id of e.ordre) {
     const l = e.lieux[id]; if (!l) continue;
     if (l.stock?.cle !== cle && (tous || id === e.ouvert || l.stock)) { tirerStock(l, cle); chg = true; }
@@ -187,6 +193,49 @@ function statutJour(nom, lieu) {
   if (!s.ok) return { ok: false, why: `Inhabituel : 1d6 = ${s.d}, il fallait 4 ou plus.` };
   const r = s.qte - (s.vendu ?? 0);
   return r > 0 ? { ok: true, qte: r, why: `Inhabituel : 1d6 = ${s.d}, ${s.qte} disponible${s.qte > 1 ? "s" : ""} cette semaine.` } : { ok: false, why: "Tous déjà engagés cette semaine." };
+}
+
+/* ------------------------------------------------------------------ gardes du corps nommés */
+/** Donne deux ou trois gardes du corps à un lieu (un au colporteur), sans reprendre ceux d'un autre lieu ni ceux déjà engagés. */
+function assignerGardes(e, lieu, n = null) {
+  n ??= lieu.colporteur ? 1 : 2 + (d6() >= 4 ? 1 : 0);
+  const pris = new Set([...Object.values(e.lieux).filter((l) => l.id !== lieu.id).flatMap((l) => l.gardes ?? []), ...e.contrats.map((c) => c.garde).filter(Boolean)]);
+  let libres = GARDES.filter((g) => !pris.has(g.id) && !(lieu.gardes ?? []).includes(g.id));
+  if (libres.length < n) libres = GARDES.filter((g) => !e.contrats.some((c) => c.garde === g.id) && !(lieu.gardes ?? []).includes(g.id));
+  const choix = [];
+  while (choix.length < n && libres.length) choix.push(libres.splice(Math.floor(Math.random() * libres.length), 1)[0].id);
+  lieu.gardes = choix;
+}
+/** Portraits des gardes : images déposées par le MJ dans un dossier de Foundry, nommées d'après le garde (brenna.webp…). */
+async function chercherPortraits() {
+  if (!game.user.isGM) return;
+  try {
+    const FP = foundry.applications?.apps?.FilePicker?.implementation ?? globalThis.FilePicker;
+    const r = await FP.browse("data", game.settings.get(MOD, "portraits"));
+    const map = {};
+    for (const f of r.files ?? []) { const b = decodeURIComponent(f.split("/").pop()).replace(/\.[^.]+$/, "").toLowerCase(); if (GARDE[b]) map[b] = f; }
+    const e = etat();
+    if (JSON.stringify(e.portraits ?? {}) !== JSON.stringify(map)) { e.portraits = map; await saveEtat(e); }
+  } catch { /* dossier absent : pas de portraits */ }
+}
+const portraitDe = (id) => etat().portraits?.[id] ?? null;
+const ATTR = ["strength", "agility", "wits", "empathy"];
+const COMP = { melee: "Mêlée", marksmanship: "Tir", endurance: "Endurance", survival: "Survie", scouting: "Repérage", insight: "Intuition", might: "Puissance", move: "Mouvement", stealth: "Furtivité", healing: "Soins", manipulation: "Manipulation", lore: "Érudition", "animal-handling": "Dressage", crafting: "Artisanat", "sleight-of-hand": "Dextérité", performance: "Représentation" };
+/** Crée la fiche de PNJ d'un garde : PNJ « Soldat » du Guide du MJ (p. 183) ajusté, avec son histoire et son équipement. */
+async function ficheGarde(g, employeur = null) {
+  const deja = game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id);
+  if (deja) { deja.sheet?.render(true); return deja; }
+  const system = { subtype: { type: "npc" }, attribute: {}, skill: {}, bio: {
+    kin: { value: g.peuple }, profession: { value: "Garde du corps" }, age: { value: g.age }, pride: { value: g.fierte }, darkSecret: { value: g.secret },
+    face: { value: g.visage }, body: { value: g.corps }, clothing: { value: g.tenue },
+    note: { value: `<p><b>Caractère :</b> ${g.traits}</p><p>${g.histoire}</p><p><b>Ce qu'il veut :</b> ${g.veut}</p><p><i>${g.replique}</i></p>${employeur ? `<p>Engagé par ${employeur}.</p>` : ""}` } } };
+  ATTR.forEach((k, i) => { system.attribute[k] = { value: g.attr[i], max: g.attr[i] }; });
+  for (const [k, v] of Object.entries(g.comp)) system.skill[k] = { value: v };
+  const img = portraitDe(g.id);
+  const actor = await Actor.create({ name: g.nom, type: "character", system, flags: { [MOD]: { garde: g.id } }, ...(img ? { img, prototypeToken: { texture: { src: img } } } : {}) });
+  for (const nom of g.equip) { const t = TARIFS.find((x) => x.nom === nom); if (t) await donnerObjet(actor, t, 1); }
+  actor.sheet?.render(true);
+  return actor;
 }
 
 /* ------------------------------------------------------------------ marchands */
@@ -366,10 +415,20 @@ async function appliquerCommande({ actorId, tid, qte, lieuId, prix: pu }) {
   return { actor, du, jours };
 }
 
-async function appliquerEmbauche({ actorId, nom, n, lieuId }) {
+async function appliquerEmbauche({ actorId, nom, n, lieuId, garde }) {
   const actor = game.actors.get(actorId); const j = JOUR[nom];
   if (!actor || !j) throw new Error("Embauche impossible.");
   const e = etat(); const lieu = e.lieux[lieuId];
+  if (garde) {
+    const g = GARDE[garde]; if (!g) throw new Error("Garde inconnu.");
+    if (e.contrats.some((c) => c.garde === garde)) throw new Error(`${g.nom} est déjà engagé.`);
+    if (lieu) lieu.gardes = (lieu.gardes ?? []).filter((x) => x !== garde);
+    const jour = Math.floor(game.time.worldTime / DAY);
+    e.contrats.push({ id: rid(), nom: g.nom, garde, salaire: j.salaire, actorId, employeur: actor.name, lieu: lieu?.nom ?? "", lieuId, depuis: jour, paye: jour - 1 });
+    noter(e, actor, "embauche", `${g.nom}, garde du corps (${prixTxt(j.salaire)} par jour)${lieu ? ` — ${lieu.nom}` : ""}`, 0);
+    await saveEtat(e); await payerSalaires();
+    return { actor };
+  }
   const s = lieu?.stock?.jets?.[`j:${nom}`]; if (s) s.vendu = (s.vendu ?? 0) + n;
   const jour = Math.floor(game.time.worldTime / DAY);
   for (let i = 0; i < n; i++) e.contrats.push({ id: rid(), nom, salaire: j.salaire, actorId, employeur: actor.name, lieu: lieu?.nom ?? "", depuis: jour, paye: jour - 1 });
@@ -408,7 +467,7 @@ async function verifierCommandes() {
     c.statut = "prête"; chg = true;
     const a = game.actors.get(c.actorId);
     const owners = game.users.filter((u) => !u.isGM && a?.testUserPermission?.(u, "OWNER")).map((u) => u.id);
-    ChatMessage.create({ whisper: [...gmIds(), ...owners], content: `<div class="flm-chat"><h3><i class="fa-solid fa-hammer"></i> Commande prête</h3><p>${esc(c.nom)} : ${c.qte > 1 ? `${c.qte} × ` : ""}${esc(T.get(c.tid)?.nom)} attend à ${esc(c.lieu)}.</p></div>` });
+    ChatMessage.create({ whisper: [...gmIds(), ...owners], content: `<div class="flm-chat"><h3><i class="fa-solid fa-hammer"></i> Commande prête</h3><p>${esc(c.nom)} : ${c.qte > 1 ? `${c.qte} × ` : ""}${esc(T.get(c.tid)?.nom)} attend ${esc(aLieu(c.lieu))}.</p></div>` });
   }
   if (chg) { await saveEtat(e); appMaj(); }
 }
@@ -704,7 +763,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     const ids = game.user.isGM ? e.ordre : (e.ouvert ? [e.ouvert] : []);
     if (this.lieuVu && !ids.includes(this.lieuVu)) this.lieuVu = null;
     const lieu = this.lieuVu ? e.lieux[this.lieuVu] : null;
-    const choix = `<label class="flm-inline">Prix : <select data-path="lieuVu"><option value="">du livre (référence)</option>${ids.map((id) => `<option value="${id}" ${this.lieuVu === id ? "selected" : ""}>à ${esc(e.lieux[id]?.nom)}</option>`).join("")}</select></label>`;
+    const choix = `<label class="flm-inline">Prix : <select data-path="lieuVu"><option value="">du livre (référence)</option>${ids.map((id) => `<option value="${id}" ${this.lieuVu === id ? "selected" : ""}>${esc(aLieu(e.lieux[id]?.nom))}</option>`).join("")}</select></label>`;
     const tete = `<div class="flm-head"><h2>Tous les prix</h2>${choix}<p class="flm-sub">${lieu ? this.#lieuResume(lieu) : "Prix moyens du Manuel du joueur, p. 179 à 195. 1 o = 10 a = 100 c."}</p></div>${this.#cats(TARIFS, true)}`;
     if (this.cat === "tresors") {
       const q = norm(this.q);
@@ -833,10 +892,11 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     const contrats = e.contrats.filter((c) => gm || game.actors.get(c.actorId)?.isOwner);
     const today = Math.floor(game.time.worldTime / DAY);
     return `<div class="flm-scroll"><div class="flm-head"><h2>Engager des journaliers</h2>
-      <p class="flm-sub">Salaire par jour du Manuel (p. 172-174 ; garde du corps p. 180). La disponibilité est celle des objets : courant, ou inhabituel (1d6 chaque semaine)${lieu ? ` — à ${esc(lieu.nom)}` : " — ouvrez une échoppe pour engager"}.</p>
+      <p class="flm-sub">Salaire par jour du Manuel (p. 172-174 ; garde du corps p. 180). La disponibilité est celle des objets : courant, ou inhabituel (1d6 chaque semaine)${lieu ? ` — ${esc(lieu.nom)}` : " — ouvrez une échoppe pour engager"}.</p>
       <p class="flm-center">Employeur : ${this.#persoSelect("acheteur", this.acheteur, liste)}</p></div>
+      ${this.#gardes(e)}
       <div class="flm-board">
-      <div class="flm-card flm-wide2"><h3>Qui engager</h3><table class="flm-table"><thead><tr><th>Métier</th><th>Salaire</th><th>Rôle</th><th>Ici</th><th></th></tr></thead><tbody>
+      <div class="flm-card flm-wide2"><h3>Autres journaliers</h3><table class="flm-table"><thead><tr><th>Métier</th><th>Salaire</th><th>Rôle</th><th>Ici</th><th></th></tr></thead><tbody>
         ${JOURNALIERS.map(([nom, sal, dispo, role]) => { const st = statutJour(nom, lieu); return `<tr data-k="jr:${esc(nom)}" class="${st.ok ? "" : "flm-off"}"><td>${esc(nom)}</td><td class="flm-price">${prixTxt(sal)}/jour</td><td class="flm-hint">${esc(role)}</td>
           <td><span class="flm-dispo flm-d${dispo}">${DISPO[dispo]}</span>${lieu && !st.ok ? ` <span class="flm-no" title="${esc(st.why)}">non</span>` : lieu && st.qte ? ` <span class="flm-ok">${st.qte}</span>` : ""}</td>
           <td>${lieu && st.ok ? `<button type="button" class="flm-small" data-engager="${esc(nom)}">Engager</button>` : ""}</td></tr>`; }).join("")}</tbody></table></div>
@@ -845,6 +905,27 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
           ${gm ? `<a data-renvoyer="${c.id}" title="Fin du contrat"><i class="fa-solid fa-user-xmark"></i></a>` : ""}</p>`).join("")
           + (gm ? `<button type="button" data-act="salaires"><i class="fa-solid fa-coins"></i> Payer une journée</button><p class="flm-hint">${tempsActif() ? "Les salaires sont aussi payés tout seuls à chaque nouveau jour du calendrier." : "Sans fl-temps, payez à la main chaque jour."} Retard de paiement : Manuel p. 162.</p>` : "")
           : `<p class="flm-hint">Personne pour le moment.</p>`}</div></div></div>`;
+  }
+
+  #gardes(e) {
+    const lieu = game.user.isGM ? this.#lieuCourant() : this.lieuBoutique;
+    if (!lieu) return "";
+    const gm = game.user.isGM;
+    const ids = (lieu.gardes ?? []).filter((id) => GARDE[id] && !e.contrats.some((c) => c.garde === id));
+    const carte = (g) => `<div class="flm-card flm-garde" data-k="g:${g.id}">
+      ${portraitDe(g.id) ? `<img class="flm-portrait" src="${esc(portraitDe(g.id))}" alt="">` : ""}<h3>${esc(g.nom)}</h3><p class="flm-sub">${esc(g.peuple)}, ${g.age} ans · ${prixTxt(JOUR["Garde du corps"].salaire)} par jour</p>
+      <p class="flm-quote">${esc(g.replique)}</p>
+      <p><b>Allure :</b> ${esc(g.visage)} ${esc(g.corps)} ${esc(g.tenue)}</p>
+      <p><b>Caractère :</b> ${esc(g.traits)}</p>
+      <p>${esc(g.histoire)}</p>
+      <p><b>Ce qu'il veut :</b> ${esc(g.veut)} · <b>Sa fierté :</b> ${esc(g.fierte)}</p>
+      ${gm ? `<p class="flm-secret"><b>Secret (MJ) :</b> ${esc(g.secret)}</p>` : ""}
+      <p class="flm-hint">Force ${g.attr[0]}, Agilité ${g.attr[1]}, Esprit ${g.attr[2]}, Empathie ${g.attr[3]} · ${esc(Object.entries(g.comp).map(([k, v]) => `${COMP[k] ?? k} ${v}`).join(", "))} · ${esc(g.equip.join(", "))}</p>
+      <div class="flm-buttons"><button type="button" data-garde="${g.id}"><i class="fa-solid fa-handshake"></i> ${gm ? "Engager" : "Demander à l'engager"}</button>
+        ${gm ? `<button type="button" data-fiche-garde="${g.id}"><i class="fa-solid fa-id-card"></i> Créer sa fiche</button><button type="button" data-prompt-garde="${g.id}" title="Copie un texte à coller dans ChatGPT pour créer son portrait"><i class="fa-solid fa-image"></i> Prompt image</button>` : ""}</div></div>`;
+    return `<h3 class="flm-center">Gardes du corps — ${esc(lieu.nom)}</h3>
+      <p class="flm-hint flm-center">Personnages inventés pour le module ; prix du service du livre (Manuel p. 180), chiffres d'après le Soldat du Guide du MJ (p. 183).${gm ? ` <a data-act="autres-gardes"><i class="fa-solid fa-shuffle"></i> D'autres gardes</a>` : ""}</p>
+      ${ids.length ? `<div class="flm-gardes">${ids.map((id) => carte(GARDE[id])).join("")}</div>` : `<p class="flm-hint flm-center">Plus de garde du corps disponible ici.</p>`}`;
   }
 
   /* ---------------- carnet */
@@ -901,7 +982,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
 
   /* ---------------- actions */
   async #click(ev) {
-    const t = ev.target.closest("[data-ovr],[data-tab],[data-cat],[data-why],[data-add],[data-add-occ],[data-cart-del],[data-act],[data-lieu],[data-fact-del],[data-mch-del],[data-vendre],[data-commander],[data-remettre],[data-annuler],[data-engager],[data-renvoyer]");
+    const t = ev.target.closest("[data-ovr],[data-tab],[data-cat],[data-why],[data-add],[data-add-occ],[data-cart-del],[data-act],[data-lieu],[data-fact-del],[data-mch-del],[data-vendre],[data-commander],[data-remettre],[data-annuler],[data-engager],[data-renvoyer],[data-garde],[data-fiche-garde],[data-prompt-garde]");
     if (!t || t.disabled) return;
     const d = t.dataset;
     if (d.ovr != null) {
@@ -909,6 +990,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       l.ovr ??= {}; if (d.ovr) l.ovr[d.ovrT] = d.ovr; else delete l.ovr[d.ovrT];
       await saveEtat(e); return this.render();
     }
+    if (d.tab === "journaliers" && game.user.isGM) chercherPortraits().then(appMaj);
     if (d.tab) { this.tab = d.tab; if (d.lieuVoir) this.lieuVu = d.lieuVoir; return this.render(); }
     if (d.cat != null) { this.cat = d.cat; return this.render(); }
     if (d.why) { this.ouverts.has(d.why) ? this.ouverts.delete(d.why) : this.ouverts.add(d.why); return this.render(); }
@@ -933,7 +1015,20 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     if (d.remettre) { await remettreCommande(d.remettre); return this.render(); }
     if (d.annuler) return this.#annulerCommande(d.annuler);
     if (d.engager) return this.#engager(d.engager);
-    if (d.renvoyer) { const e = etat(); e.contrats = e.contrats.filter((c) => c.id !== d.renvoyer); await saveEtat(e); return this.render(); }
+    if (d.renvoyer) {
+      const e = etat(); const c = e.contrats.find((x) => x.id === d.renvoyer);
+      e.contrats = e.contrats.filter((x) => x.id !== d.renvoyer);
+      if (c?.garde && e.lieux[c.lieuId]) (e.lieux[c.lieuId].gardes ??= []).push(c.garde); // il retourne là où on l'a trouvé
+      await saveEtat(e); return this.render();
+    }
+    if (d.garde) return this.#engagerGarde(d.garde);
+    if (d.ficheGarde) { await ficheGarde(GARDE[d.ficheGarde]); return; }
+    if (d.promptGarde) {
+      const txt = promptImage(GARDE[d.promptGarde]);
+      try { await navigator.clipboard.writeText(txt); ui.notifications.info("Prompt copié : collez-le dans ChatGPT."); }
+      catch { DV().prompt({ window: { title: "Prompt image" }, content: `<textarea rows="12" style="width:100%">${esc(txt)}</textarea>` }).catch(() => null); }
+      return;
+    }
     switch (d.act) {
       case "acheter": return this.#acheter();
       case "lieu-add": return this.#nouveauLieu();
@@ -945,6 +1040,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       case "semaine": { const e = etat(); e.semaine = (e.semaine ?? 0) + 1; await saveEtat(e); await majStocks({ tous: true }); return this.render(); }
       case "ouvrir": return this.#ouvrir(etat().ouvert === this.lieuVu ? null : this.lieuVu);
       case "salaires": await payerSalaires({ force: true }); return this.render();
+      case "autres-gardes": { const e = etat(); const l = e.lieux[this.#lieuCourant()?.id]; if (!l) return; assignerGardes(e, l); await saveEtat(e); return this.render(); }
       case "carnet-vider": {
         if (!(await DV().confirm({ window: { title: "Vider le carnet" }, content: "<p>Effacer tout le carnet de dépenses ?</p>" }))) return;
         const e = etat(); e.carnet = []; await saveEtat(e); return this.render();
@@ -1003,7 +1099,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
   async #nouveauLieu(data = {}) {
     const e = etat(); const id = rid();
     e.lieux[id] = { id, nom: "Nouveau lieu", taille: "Village", etabs: { marche: true, auberge: true, forgeron: true }, facteurs: [], marchands: [], notes: "", ovr: {}, occasion: [], ...data };
-    e.ordre.push(id); tirerStock(e.lieux[id], semaine().cle);
+    e.ordre.push(id); tirerStock(e.lieux[id], semaine().cle); assignerGardes(e, e.lieux[id]);
     this.lieuVu = id; await saveEtat(e); this.render();
     return id;
   }
@@ -1034,7 +1130,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       }
       const id = rid();
       e.lieux[id] = { id, nom: si.nom, taille: si.categorie === "village" ? "Village" : "Château ou forteresse", etabs, facteurs: [], marchands, notes: "", ovr: {}, occasion: [], campagne: si.id, suggere: true };
-      tirerStock(e.lieux[id], cle); e.ordre.push(id); n++;
+      tirerStock(e.lieux[id], cle); e.ordre.push(id); assignerGardes(e, e.lieux[id]); n++;
     }
     await saveEtat(e);
     ui.notifications.info(n ? `${n} lieu(x) créé(s) d'après la campagne. Vérifiez les établissements et les marchands.` : "Tous les lieux de la campagne existent déjà.");
@@ -1069,10 +1165,10 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     if (game.user.isGM) {
       try {
         const r = await appliquerAchat(data);
-        ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-coins"></i> ${esc(actor.name)} achète</h3><p>${resume(lignes)}</p>${troc.length ? `<p>Troc : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>Payé : <b>${prixTxt(r.du, true)}</b> à ${esc(lieu.nom)}.</p>${r.sansFiche.length ? `<p class="flm-hint">Créé sans caractéristiques : ${esc(r.sansFiche.join(", "))}.</p>` : ""}</div>`, speaker: ChatMessage.getSpeaker({ actor }) });
+        ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-coins"></i> ${esc(actor.name)} achète</h3><p>${resume(lignes)}</p>${troc.length ? `<p>Troc : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>Payé : <b>${prixTxt(r.du, true)}</b> ${esc(aLieu(lieu.nom))}.</p>${r.sansFiche.length ? `<p class="flm-hint">Créé sans caractéristiques : ${esc(r.sansFiche.join(", "))}.</p>` : ""}</div>`, speaker: ChatMessage.getSpeaker({ actor }) });
       } catch (err) { return ui.notifications.warn(err.message); }
     } else {
-      await demander("achat", data, `<p><b>${esc(actor.name)}</b> à ${esc(lieu.nom)} :</p><p>${resume(lignes)}</p>${troc.length ? `<p>Troc proposé : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>À payer : <b>${prixTxt(Math.max(0, brut - valTroc), true)}</b></p>`);
+      await demander("achat", data, `<p><b>${esc(actor.name)}</b> ${esc(aLieu(lieu.nom))} :</p><p>${resume(lignes)}</p>${troc.length ? `<p>Troc proposé : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>À payer : <b>${prixTxt(Math.max(0, brut - valTroc), true)}</b></p>`);
       ui.notifications.info("Demande envoyée au MJ.");
     }
     this.panier = []; this.troc = {}; this.render();
@@ -1090,9 +1186,9 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     const a = game.actors.get(res.a);
     const data = { actorId: a.id, tid, qte: res.q, lieuId: lieu.id, prix: pu };
     if (game.user.isGM) {
-      try { const r = await appliquerCommande(data); ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-hammer"></i> Commande</h3><p>${esc(a.name)} commande ${res.q > 1 ? `${res.q} × ` : ""}${esc(t.nom)} à ${esc(lieu.nom)} : ${prixTxt(r.du, true)}, prêt dans ${delaiTxt(r.jours)}.</p></div>`, speaker: ChatMessage.getSpeaker({ actor: a }) }); }
+      try { const r = await appliquerCommande(data); ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-hammer"></i> Commande</h3><p>${esc(a.name)} commande ${res.q > 1 ? `${res.q} × ` : ""}${esc(t.nom)} ${esc(aLieu(lieu.nom))} : ${prixTxt(r.du, true)}, prêt dans ${delaiTxt(r.jours)}.</p></div>`, speaker: ChatMessage.getSpeaker({ actor: a }) }); }
       catch (err) { return ui.notifications.warn(err.message); }
-    } else { await demander("commande", data, `<p><b>${esc(a.name)}</b> commande ${res.q > 1 ? `${res.q} × ` : ""}${esc(t.nom)} à ${esc(lieu.nom)}.</p><p>${prixTxt(pu * res.q, true)}, prêt dans ${delaiTxt(j * res.q)}.</p>`); ui.notifications.info("Commande envoyée au MJ."); }
+    } else { await demander("commande", data, `<p><b>${esc(a.name)}</b> commande ${res.q > 1 ? `${res.q} × ` : ""}${esc(t.nom)} ${esc(aLieu(lieu.nom))}.</p><p>${prixTxt(pu * res.q, true)}, prêt dans ${delaiTxt(j * res.q)}.</p>`); ui.notifications.info("Commande envoyée au MJ."); }
     this.render();
   }
   async #annulerCommande(id) {
@@ -1112,7 +1208,24 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     if (!res) return;
     const data = { actorId: actor.id, nom, n: res, lieuId: lieu.id };
     if (game.user.isGM) { try { await appliquerEmbauche(data); } catch (err) { return ui.notifications.warn(err.message); } }
-    else { await demander("embauche", data, `<p><b>${esc(actor.name)}</b> veut engager ${res > 1 ? `${res} × ` : ""}${esc(nom)} à ${esc(lieu.nom)} (${prixTxt(JOUR[nom].salaire)} par jour chacun).</p>`); ui.notifications.info("Demande envoyée au MJ."); }
+    else { await demander("embauche", data, `<p><b>${esc(actor.name)}</b> veut engager ${res > 1 ? `${res} × ` : ""}${esc(nom)} ${esc(aLieu(lieu.nom))} (${prixTxt(JOUR[nom].salaire)} par jour chacun).</p>`); ui.notifications.info("Demande envoyée au MJ."); }
+    this.render();
+  }
+  async #engagerGarde(id) {
+    const g = GARDE[id]; const lieu = game.user.isGM ? this.#lieuCourant() : this.lieuBoutique;
+    const liste = this.#defaut("acheteur"); const actor = game.actors.get(this.acheteur);
+    if (!g || !lieu || !actor) return ui.notifications.warn("Choisissez un employeur.");
+    const res = await DV().prompt({ window: { title: `Engager ${g.nom}` }, content: `<p>${esc(g.nom)} demande ${prixTxt(JOUR["Garde du corps"].salaire, true)} par jour.</p>
+      <p><label>Employeur ${liste.length > 1 ? `<select name="a">${liste.map((a) => `<option value="${a.id}" ${a.id === actor.id ? "selected" : ""}>${esc(a.name)}</option>`).join("")}</select>` : esc(actor.name)}</label></p>
+      ${game.user.isGM ? `<p><label><input type="checkbox" name="fiche" checked> Créer aussi sa fiche de PNJ</label></p>` : ""}`,
+      ok: { label: game.user.isGM ? "Engager" : "Demander au MJ", callback: (ev, btn) => ({ a: btn.form.elements.a?.value ?? actor.id, fiche: !!btn.form.elements.fiche?.checked }) } }).catch(() => null);
+    if (!res) return;
+    const a = game.actors.get(res.a);
+    const data = { actorId: a.id, nom: "Garde du corps", n: 1, lieuId: lieu.id, garde: id };
+    if (game.user.isGM) {
+      try { await appliquerEmbauche(data); if (res.fiche) await ficheGarde(g, a.name); ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-handshake"></i> ${esc(g.nom)} rejoint ${esc(a.name)}</h3><p><i>${esc(g.replique)}</i></p></div>` }); }
+      catch (err) { return ui.notifications.warn(err.message); }
+    } else { await demander("embauche", data, `<p><b>${esc(a.name)}</b> veut engager <b>${esc(g.nom)}</b> comme garde du corps ${esc(aLieu(lieu.nom))} (${prixTxt(JOUR["Garde du corps"].salaire)} par jour).</p>`); ui.notifications.info("Demande envoyée au MJ."); }
     this.render();
   }
   async #vendreObjet(itemId) {
@@ -1186,12 +1299,13 @@ function open() { app ??= new MarchandApp(); app.render({ force: true }); }
 
 Hooks.once("init", () => {
   game.settings.register(MOD, "etat", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
+  game.settings.register(MOD, "portraits", { name: "Dossier des portraits des gardes", hint: "Dossier de vos données Foundry où vous déposez les portraits, nommés comme dans le fichier de prompts (brenna.webp, orvik.png…).", scope: "world", config: true, type: String, default: "fl-portraits/gardes", onChange: () => chercherPortraits().then(appMaj) });
   game.settings.register(MOD, "regles", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
   game.keybindings.register(MOD, "open", { name: "Ouvrir le Marchand", editable: [{ key: "KeyM", modifiers: ["Alt"] }], onDown: () => { open(); return true; } });
 });
 Hooks.once("ready", () => {
   globalThis.FLMarchand = { open, prix: (nom) => TARIFS.find((t) => norm(t.nom) === norm(nom)) };
-  if (isActiveGM()) setTimeout(() => { verifierCommandes(); payerSalaires(); }, 2000);
+  if (isActiveGM()) setTimeout(() => { verifierCommandes(); payerSalaires(); chercherPortraits(); }, 2000);
 });
 
 Hooks.on("getSceneControlButtons", (controls) => {
