@@ -293,7 +293,7 @@ export function promptImage(g) {
     `Silhouette : ${g.corps}`,
     `Tenue et armes : ${g.tenue} Équipement : ${g.equip.join(", ").toLowerCase()}.`,
     `Caractère à faire sentir dans l'expression et la posture : ${g.traits}`,
-    `Style : illustration peinte à la main, encre et aquarelle aux couleurs sourdes, ambiance nordique médiévale rude et mélancolique, comme dans un vieux manuel de jeu de rôle ; lumière naturelle douce ; pas de texte, pas de logo, pas de cadre.`,
-    `Cadrage : portrait vertical en buste (format 2:3), le personnage regarde vers le spectateur, fond de parchemin clair légèrement taché.`
+    `Style : dessin à la main en noir et blanc uniquement, à la plume et à l'encre de Chine, traits fins, hachures et contre-hachures pour les ombres, comme les illustrations intérieures des livres de jeu de rôle des années 1970-1980 ; aucune couleur, aucun gris lavé, aucun rendu numérique ni photographique ; ambiance médiévale nordique rude ; pas de texte, pas de logo, pas de cadre.`,
+    `Cadrage : portrait vertical en buste (format 2:3), le personnage regarde vers le spectateur, sur fond de papier blanc avec très peu de décor.`
   ].join("\n");
 }
