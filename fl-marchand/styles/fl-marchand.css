@@ -1,0 +1,530 @@
+/* =====================================================================================
+   Forbidden Lands – Le Marchand
+   Direction artistique reprise du système Forbidden Lands (fiche de personnage et journaux) :
+   papier blanc, encre noire, rouge sang, bandeau d'onglets sombre avec l'épée et le crâne,
+   cadres encrés, polices IM Fell. Les ornements et polices viennent du système installé.
+   ===================================================================================== */
+
+/* Glyphes de l'onglet actif (polices du système) */
+@font-face { font-family: "flm-swords"; src: url("../../../systems/forbidden-lands/fonts/swordlings.ttf"); }
+@font-face { font-family: "flm-skulls"; src: url("../../../systems/forbidden-lands/fonts/skullz.ttf"); }
+
+.fl-marchand {
+  --flm-ink: var(--color-theme-text, #222020);
+  --flm-paper: var(--color-theme-background, #fff);
+  --flm-accent: var(--color-theme-accent, #a00404);
+  --flm-g2: var(--color-theme-gray-200, #dddddd);
+  --flm-g4: var(--color-theme-gray-400, #999999);
+  --flm-g6: var(--color-theme-gray-600, #707070);
+  --flm-g8: var(--color-theme-gray-800, #333333);
+  --flm-teal: var(--color-theme-alt-600, #36b5a7);
+  --flm-teal-d: var(--color-theme-alt-800, #005d67);
+  --flm-sand: var(--color-theme-alt-1000, #bcb192);
+  --flm-zebra: color-mix(in srgb, var(--flm-g2) 50%, transparent);
+  --flm-head: "IM Fell DW Pica SC", "IM Fell DW Pica", Georgia, serif;
+  --flm-title: "IM Fell Three Line Pica", "IM Fell DW Pica", Georgia, serif;
+  --flm-text: "IM Fell Great Primer", "IM Fell DW Pica", Georgia, serif;
+  --flm-ui: Author, Signika, "Helvetica Neue", sans-serif;
+  --flm-ease: cubic-bezier(.2, .7, .3, 1);
+}
+
+/* ---------------------------------------------------------------- fenêtre */
+.application.fl-marchand { background: var(--flm-paper); }
+.application.fl-marchand > .window-header { background: var(--flm-g8); color: #fff; border-bottom: 0; }
+.application.fl-marchand > .window-header .window-title {
+  font-family: var(--flm-head); font-size: 15px; letter-spacing: .6px; color: #fff; text-shadow: 0 0 6px rgba(0, 0, 0, .6);
+}
+.application.fl-marchand > .window-header :is(button, a) { color: #fff; }
+.fl-marchand .window-content {
+  padding: 0; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--flm-paper); color: var(--flm-ink);
+  font-family: var(--flm-text); font-size: 15px; line-height: 1.42;
+}
+
+/* ---------------------------------------------------------------- onglets (bandeau du système) */
+.flm-nav {
+  display: flex; align-items: center; gap: 4px; flex: none; flex-wrap: wrap;
+  background: var(--flm-g8); padding: 0 12px; min-height: 44px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .25); position: relative; z-index: 2;
+}
+.fl-marchand .flm-tab {
+  position: relative; padding: 12px 18px 10px; color: #fff; text-decoration: none; cursor: pointer;
+  font-family: var(--flm-text); font-size: 16px; line-height: 1; text-transform: uppercase; white-space: nowrap;
+  transition: text-shadow .2s, filter .2s;
+}
+.fl-marchand .flm-tab:hover { color: #fff; text-shadow: 0 0 6px #fff; }
+.fl-marchand .flm-tab.active { filter: drop-shadow(0 0 2px #999); text-shadow: 0 0 10px #fff; }
+.fl-marchand .flm-tab.active::before,
+.fl-marchand .flm-tab.active::after { position: absolute; top: 50%; text-transform: lowercase; animation: flm-fade .3s var(--flm-ease); }
+.fl-marchand .flm-tab.active::before { content: "x"; font-family: "flm-swords", "Swordlings"; font-size: 16px; left: 0; transform: translateY(-55%); }
+.fl-marchand .flm-tab.active::after { content: "l"; font-family: "flm-skulls", "skullz"; font-size: 24px; right: -3px; transform: translateY(-52%); }
+
+.application.fl-marchand .flm-nav input.flm-search {
+  margin-left: auto; width: 220px; height: 28px; padding: 0 10px;
+  font-family: var(--flm-ui); font-size: 13px; color: #fff;
+  background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .35); border-radius: 3px; box-shadow: none;
+  transition: background .2s, color .2s, box-shadow .2s, width .25s var(--flm-ease);
+}
+.application.fl-marchand .flm-nav input.flm-search::placeholder { color: rgba(255, 255, 255, .6); }
+.application.fl-marchand .flm-nav input.flm-search:focus { width: 260px; background: #fff; color: var(--flm-ink); border-color: var(--flm-teal-d); box-shadow: 0 0 10px var(--flm-teal); outline: none; }
+.application.fl-marchand .flm-nav input.flm-search:focus::placeholder { color: var(--flm-g6); }
+
+/* sous-onglets : petites capitales, fleuron qui se déploie sous l'onglet actif */
+.flm-sub-nav {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 20px; flex: none;
+  padding: 9px 14px 2px; background: var(--flm-paper); border-bottom: 1px solid var(--flm-g2);
+}
+.flm-sub-nav a {
+  position: relative; padding: 2px 2px 12px; cursor: pointer; text-decoration: none;
+  font-family: var(--flm-head); font-size: 14.5px; text-transform: uppercase; letter-spacing: .4px;
+  color: var(--flm-g6) !important; transition: color .2s;
+}
+.flm-sub-nav a::after {
+  content: ""; position: absolute; left: 50%; bottom: 0; width: 70px; height: 11px;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/endstop.webp") center / contain no-repeat;
+  transform: translateX(-50%) scaleX(0); opacity: 0; transition: transform .3s var(--flm-ease), opacity .3s;
+}
+.flm-sub-nav a:hover { color: var(--flm-ink) !important; text-shadow: none; }
+.flm-sub-nav a.active { color: var(--flm-ink) !important; }
+.flm-sub-nav a.active::after { transform: translateX(-50%) scaleX(1); opacity: 1; }
+
+/* ---------------------------------------------------------------- mise en page */
+.flm-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.flm-scroll {
+  overflow-y: auto; padding: 14px 18px 22px; flex: 1; min-height: 0; container-type: inline-size;
+  scrollbar-width: thin; scrollbar-color: var(--flm-g4) transparent;
+}
+.flm-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(340px, 1fr); grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+.flm-split-even { grid-template-columns: 1fr 1fr; }
+.flm-detail {
+  overflow-y: auto; min-height: 0; padding: 14px 20px 22px; background: var(--flm-paper);
+  border-left: 1px solid var(--flm-g2); box-shadow: inset 8px 0 10px -10px rgba(0, 0, 0, .35);
+  scrollbar-width: thin; scrollbar-color: var(--flm-g4) transparent;
+}
+.flm-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-content: start; }
+.flm-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; align-content: start; }
+.flm-wide { grid-column: 1 / -1; }
+.flm-wide2 { grid-column: span 2; }
+.flm-now { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(270px, 1fr); gap: 14px; align-items: start; }
+.flm-now-main, .flm-now-side { display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------------------------------------------------------------- textes */
+.fl-marchand h1, .fl-marchand h2, .fl-marchand h3, .fl-marchand h4 { color: var(--flm-ink); border: 0; font-weight: normal; }
+.fl-marchand h2 { font-family: var(--flm-title); font-size: 24px; line-height: 1.1; text-transform: uppercase; text-align: center; margin: 4px 0 2px; }
+.fl-marchand h3 {
+  font-family: var(--flm-head); font-size: 16.5px; font-weight: bold; text-transform: uppercase; text-align: center;
+  letter-spacing: .3px; margin: 2px 0 8px; line-height: 1.2;
+}
+.fl-marchand h3::after,
+.fl-marchand .flm-fiche h2::after {
+  content: ""; display: block; width: 130px; height: 10px; margin: 4px auto 0;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/endstop.webp") center / contain no-repeat; opacity: .9;
+}
+.fl-marchand h4 {
+  font-family: var(--flm-head); font-size: 13.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--flm-g6);
+  margin: 16px 0 6px; padding-bottom: 2px; border-bottom: 1px solid var(--flm-g2);
+}
+.fl-marchand p { margin: 4px 0; }
+.fl-marchand a { color: var(--flm-accent); cursor: pointer; text-decoration: none; transition: text-shadow .15s, color .15s; }
+.fl-marchand a:hover { text-shadow: 0 0 6px color-mix(in srgb, var(--flm-accent) 55%, transparent); }
+.fl-marchand ul { margin: 4px 0 6px; padding-left: 20px; list-style-type: "✥  "; }
+.fl-marchand ul li::marker { color: var(--flm-g6); font-size: 12px; }
+.fl-marchand li { margin: 3px 0; }
+.fl-marchand ol { margin: 4px 0; padding-left: 22px; }
+.fl-marchand ol li { margin: 6px 0; }
+.fl-marchand code { font-family: var(--flm-ui); background: var(--flm-zebra); padding: 0 4px; border-radius: 3px; }
+.flm-hint { color: var(--flm-g6); font-style: italic; font-size: 13.5px; }
+.flm-sub { color: var(--flm-g6); font-style: italic; text-align: center; margin-top: 0 !important; }
+.flm-lead { font-size: 16px; }
+.flm-date { font-family: var(--flm-head); font-size: 15px; text-transform: uppercase; letter-spacing: .4px; color: var(--flm-g6); }
+.flm-alert { color: var(--flm-accent); font-weight: bold; }
+.flm-nowrap { white-space: nowrap; }
+
+/* ---------------------------------------------------------------- encadrés (cadre encré de la fiche) */
+.flm-card {
+  position: relative; background: var(--flm-paper); padding: 12px 16px;
+  border: 6px solid transparent;
+  border-image: url("../../../systems/forbidden-lands/assets/journal-art/small-border.webp") 100 / 10px repeat;
+  transition: transform .18s var(--flm-ease), filter .18s;
+}
+.flm-board > .flm-card:hover, .flm-now .flm-card:hover, .flm-card.flm-click:hover { transform: translateY(-1px); filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .12)); }
+.flm-click { cursor: pointer; }
+.flm-card.sel { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--flm-accent) 45%, transparent)); }
+.flm-card.flm-click h3 { font-size: 15px; }
+
+/* l'étape conseillée : titre rouge, petit corbeau en filigrane */
+.flm-next h3 { color: var(--flm-accent); }
+.flm-next::after {
+  content: ""; position: absolute; right: 6px; bottom: 4px; width: 78px; height: 56px; pointer-events: none; opacity: .13;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/ravens/raven4.webp") center / contain no-repeat;
+}
+.flm-ideas { background: color-mix(in srgb, var(--flm-sand) 18%, var(--flm-paper)); margin-bottom: 10px; }
+.flm-ideas h4 { margin-top: 2px; }
+
+/* bloc clé d'une fiche (où, veut, envers les PJ) */
+.flm-key {
+  margin: 10px 0; padding: 8px 14px; background: color-mix(in srgb, var(--flm-sand) 12%, var(--flm-paper));
+  border: 6px solid transparent;
+  border-image: url("../../../systems/forbidden-lands/assets/journal-art/small-border.webp") 100 / 10px repeat;
+}
+.flm-key p { margin: 5px 0; }
+.flm-key span { display: block; font-family: var(--flm-head); font-size: 12.5px; text-transform: uppercase; letter-spacing: .5px; color: var(--flm-g6); margin-top: 6px; }
+
+/* ---------------------------------------------------------------- fiches */
+.flm-fiche .flm-sub { margin-bottom: 8px !important; }
+.flm-people { list-style: none !important; padding-left: 0 !important; }
+.flm-people li { padding: 4px 2px; border-bottom: 1px solid var(--flm-g2); font-family: var(--flm-ui); font-size: 14px; }
+.flm-people li:nth-child(odd) { background: var(--flm-zebra); }
+
+/* ---------------------------------------------------------------- tableaux (listes de la fiche) */
+.fl-marchand table.flm-table { width: 100%; border-collapse: collapse; background: transparent; border: 0; margin: 0; font-family: var(--flm-ui); font-size: 14px; }
+.fl-marchand .flm-table :is(thead, tbody, tr) { background: transparent; border: 0; }
+.fl-marchand .flm-table th {
+  position: sticky; top: -14px; z-index: 1; text-align: left; padding: 7px 8px 5px;
+  background: var(--flm-paper); color: var(--flm-ink); text-shadow: none;
+  font-family: var(--flm-ui); font-weight: bold; font-size: 12.5px; text-transform: uppercase; letter-spacing: .3px;
+  border: 0; border-bottom: 2px solid var(--flm-ink);
+}
+.fl-marchand .flm-table td { padding: 6px 8px; vertical-align: top; color: var(--flm-ink); border: 0; border-bottom: 1px solid var(--flm-g2); background: transparent; transition: background .18s, opacity .3s; }
+.fl-marchand .flm-table tbody tr:nth-child(odd) td { background: var(--flm-zebra); }
+.fl-marchand .flm-table td b { font-family: var(--flm-text); font-size: 15px; }
+.fl-marchand .flm-table tr[data-sel] { cursor: pointer; }
+.fl-marchand .flm-table tr[data-sel]:hover td { background: color-mix(in srgb, var(--flm-accent) 7%, var(--flm-paper)); }
+.fl-marchand .flm-table tr.sel td { background: color-mix(in srgb, var(--flm-accent) 12%, var(--flm-paper)); }
+.fl-marchand .flm-table tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--flm-accent); }
+.fl-marchand .flm-table tr.done td, .fl-marchand .flm-table tr.off td { opacity: .45; }
+.fl-marchand .flm-table tr.due td { color: var(--flm-accent); }
+.fl-marchand .flm-table td .flm-hint { font-family: var(--flm-text); }
+.dead { opacity: .5; text-decoration: line-through; }
+.fl-marchand .flm-table tr.dead td { opacity: .5; text-decoration: line-through; }
+
+/* ---------------------------------------------------------------- étiquettes */
+.flm-tag {
+  font-family: var(--flm-ui); font-size: 10.5px; text-transform: uppercase; letter-spacing: .5px; vertical-align: middle;
+  border: 1px solid currentColor; border-radius: 3px; padding: 0 4px; color: var(--flm-g6); white-space: nowrap; font-style: normal;
+}
+.flm-tag.mort, .flm-tag.faux { color: var(--flm-accent); }
+.flm-page {
+  font-family: var(--flm-ui); font-size: 10.5px; text-transform: uppercase; letter-spacing: .3px; vertical-align: middle;
+  color: var(--flm-accent); border: 1px solid color-mix(in srgb, var(--flm-accent) 45%, transparent); border-radius: 3px;
+  padding: 0 4px; white-space: nowrap; font-style: normal; font-weight: normal;
+}
+.flm-att {
+  display: inline-block; font-family: var(--flm-ui); font-size: 12px; line-height: 1.5; white-space: nowrap;
+  padding: 0 8px; border-radius: 10px; background: #e6e3de; color: #4a4542; transition: background .25s, color .25s;
+}
+.flm-att.hostile, .flm-att.ennemi { background: #f3d6d0; color: #8a0303; }
+.flm-att.mefiant { background: #f1e4c6; color: #6b4a08; }
+.flm-att.amical, .flm-att.allie { background: #d3ebe7; color: var(--flm-teal-d); }
+.flm-status {
+  display: inline-block; font-family: var(--flm-ui); font-size: 12px; line-height: 1.5; white-space: nowrap; font-weight: normal;
+  padding: 0 8px; border-radius: 10px; background: #e6e3de; color: #4a4542; text-transform: none; letter-spacing: 0; vertical-align: middle;
+  transition: background .25s, color .25s;
+}
+.flm-status.rumeur { background: #f1e4c6; color: #6b4a08; }
+.flm-status.visite { background: #dbe5ef; color: #234a72; }
+.flm-status.explore, .flm-status.conquis { background: #d3ebe7; color: var(--flm-teal-d); }
+
+/* ---------------------------------------------------------------- boutons (comme la fiche) */
+.application.fl-marchand button {
+  font-family: var(--flm-text); font-weight: bold; font-size: 14px; line-height: 1.3; color: var(--flm-ink);
+  background: transparent; border: 1px solid var(--flm-g4); border-radius: 3px; box-shadow: none;
+  padding: 5px 10px; height: auto; min-height: 0; cursor: pointer;
+  transition: background .15s, color .15s, text-shadow .15s, border-color .15s, transform .1s;
+}
+.application.fl-marchand button:hover { background: var(--flm-g2); border-color: var(--flm-g6); text-shadow: 0 0 8px color-mix(in srgb, var(--flm-accent) 55%, transparent); }
+.application.fl-marchand button:active { transform: translateY(1px); }
+.application.fl-marchand button:focus-visible { outline: none; box-shadow: 0 0 8px var(--flm-teal); }
+.application.fl-marchand button.flm-small { font-size: 12.5px; padding: 1px 8px; width: auto; }
+.application.fl-marchand button.flm-official,
+.application.fl-marchand .flm-next .flm-buttons button:first-child { background: var(--flm-g8); color: #fff; border-color: var(--flm-g8); }
+.application.fl-marchand button.flm-official:hover,
+.application.fl-marchand .flm-next .flm-buttons button:first-child:hover { background: #111; text-shadow: 0 0 8px #fff; }
+.application.fl-marchand button.flm-official { width: 100%; margin: 6px 0 4px; }
+.flm-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.flm-buttons button { flex: 1 1 auto; }
+
+/* ---------------------------------------------------------------- champs (comme la fiche) */
+.application.fl-marchand :is(input[type="text"], input[type="search"], input[type="number"], select, textarea) {
+  font-family: var(--flm-ui); font-size: 14px; color: var(--flm-ink); background: var(--flm-paper);
+  border: 1px solid var(--flm-g4); border-radius: 3px; box-shadow: inset 0 0 6px var(--flm-g2);
+  padding: 4px 8px; height: auto; min-height: 28px; transition: box-shadow .2s, border-color .2s;
+}
+.application.fl-marchand :is(input[type="text"], input[type="search"], input[type="number"], select, textarea):focus {
+  outline: none; border-color: var(--flm-teal-d); box-shadow: 0 0 10px var(--flm-teal);
+}
+.application.fl-marchand textarea { width: 100%; resize: vertical; line-height: 1.4; }
+.application.fl-marchand :is(input[type="text"], textarea)::placeholder { color: var(--flm-ink); opacity: .45; }
+.application.fl-marchand input[type="checkbox"], .application.fl-marchand input[type="radio"] {
+  accent-color: var(--flm-accent); width: 16px; height: 16px; flex: none; margin: 2px 0 0; cursor: pointer;
+}
+.flm-edit { display: flex; flex-direction: column; gap: 8px; margin: 6px 0; }
+.flm-edit.flm-inline { flex-direction: row; flex-wrap: wrap; gap: 14px; justify-content: center; }
+.flm-edit label { display: flex; flex-direction: column; gap: 3px; font-family: var(--flm-text); font-weight: bold; font-size: 14px; color: var(--flm-ink); }
+.flm-edit.flm-inline label { flex-direction: row; align-items: center; gap: 8px; }
+.flm-check { display: flex !important; flex-direction: row !important; align-items: flex-start; gap: 8px; cursor: pointer; font-weight: normal !important; font-family: var(--flm-text) !important; font-size: 14.5px !important; color: var(--flm-ink) !important; }
+.flm-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 6px 0; }
+.flm-row > label { font-family: var(--flm-text); font-weight: bold; }
+.flm-row input[type="text"] { flex: 1; min-width: 180px; }
+.flm-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+.flm-filters input, .flm-filters select { flex: 1 1 170px; width: auto; }
+.flm-prep { display: flex; flex-direction: column; gap: 2px; margin: 10px 0; font-family: var(--flm-text); }
+.flm-prep b { font-weight: bold; }
+
+/* ---------------------------------------------------------------- lieux et événements dépliables */
+.fl-marchand details.flm-lieu { border-bottom: 1px solid var(--flm-g2); }
+.fl-marchand details.flm-lieu > summary {
+  display: flex; align-items: center; gap: 6px; flex-wrap: nowrap; list-style: none; cursor: pointer; padding: 6px 2px;
+  font-family: var(--flm-ui); font-size: 14px; transition: text-shadow .2s, background .2s;
+}
+.fl-marchand details.flm-lieu > summary::-webkit-details-marker { display: none; }
+.fl-marchand details.flm-lieu > summary::before {
+  content: "▸"; display: inline-block; width: 10px; color: var(--flm-g6); font-size: 12px; transition: transform .2s var(--flm-ease), color .2s;
+}
+.fl-marchand details.flm-lieu[open] > summary::before { transform: rotate(90deg); color: var(--flm-accent); }
+.fl-marchand details.flm-lieu > summary:hover { text-shadow: 0 0 8px var(--flm-teal); background: var(--flm-zebra); }
+.fl-marchand details.flm-lieu > summary b { font-family: var(--flm-text); font-size: 15px; min-width: 0; }
+.fl-marchand details.flm-lieu > summary :is(.flm-page, .flm-tag, .flm-check) { flex: none; }
+.fl-marchand details.flm-lieu[open] > summary b { color: var(--flm-accent); }
+.fl-marchand details.flm-lieu summary .flm-check { display: inline-flex !important; margin: 0; }
+.fl-marchand details.flm-lieu > :not(summary) { margin-left: 22px; }
+.fl-marchand details.flm-lieu[open] > :not(summary) { animation: flm-unfold .25s var(--flm-ease); }
+.fl-marchand details.flm-lieu > button { margin: 2px 0 8px 22px; }
+.flm-rumeur { display: flex; margin: 5px 0; }
+
+/* ---------------------------------------------------------------- « en ce moment » */
+.flm-todo { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; font-family: var(--flm-text); }
+.flm-todo a { color: var(--flm-ink) !important; }
+.flm-todo a b { color: var(--flm-accent); font-family: var(--flm-ui); font-weight: bold; font-size: 18px; margin-right: 4px; }
+
+/* ---------------------------------------------------------------- horloges */
+.flm-clock, .flm-clock-row { display: flex; align-items: center; gap: 10px; margin: 5px 0; }
+.flm-clock-row .flm-clock { flex: 1; }
+.flm-clock-name { flex: 1; font-family: var(--flm-text); }
+.flm-clock-segs { display: inline-flex; gap: 3px; }
+.flm-clock-segs span {
+  width: 17px; height: 17px; border-radius: 50%; cursor: pointer; background: var(--flm-paper);
+  border: 1.5px solid var(--flm-ink); transition: background .2s, border-color .2s, transform .15s;
+}
+.flm-clock-segs span:hover { transform: scale(1.15); }
+.flm-clock-segs span.on { background: var(--flm-accent); border-color: var(--flm-accent); animation: flm-pop .3s var(--flm-ease); }
+
+/* ---------------------------------------------------------------- page « l'essentiel » */
+.flm-essentiel > * { max-width: 1000px; margin-left: auto; margin-right: auto; }
+.flm-hero { position: relative; text-align: center; padding: 6px 170px 16px; }
+.flm-hero::before {
+  content: ""; display: block; height: 74px; max-width: 620px; margin: 0 auto -4px;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/top_border.webp") center / contain no-repeat;
+}
+.fl-marchand .flm-hero h1 { font-family: var(--flm-title); font-size: 36px; line-height: 1.05; text-transform: uppercase; margin: 6px 0 0; }
+.flm-hero-sub { font-family: var(--flm-head); text-transform: uppercase; letter-spacing: 3px; color: var(--flm-g6); margin: 2px 0 6px !important; }
+.flm-hero-sub::after {
+  content: ""; display: block; width: 150px; height: 11px; margin: 6px auto 0;
+  background: url("../../../systems/forbidden-lands/assets/journal-art/endstop.webp") center / contain no-repeat;
+}
+.flm-hero .flm-lead { font-size: 17.5px; max-width: 640px; margin: 8px auto 0; }
+.flm-hero .flm-raven { position: absolute; right: 4px; top: 14px; width: 155px; pointer-events: none; opacity: .92; animation: flm-raven-in 1s var(--flm-ease); }
+.flm-essentiel .flm-card p { margin: 6px 0; line-height: 1.5; }
+@container (max-width: 760px) {
+  .flm-hero { padding: 6px 12px 14px; }
+  .flm-hero .flm-raven { display: none; }
+  .flm-now { grid-template-columns: 1fr; }
+}
+
+/* écran vide */
+.flm-empty { margin: auto; text-align: center; max-width: 480px; padding: 30px; }
+.flm-empty .flm-raven { width: 170px; opacity: .9; margin-bottom: 6px; animation: flm-raven-in 1s var(--flm-ease); }
+.flm-empty button { margin-top: 12px; }
+
+/* ---------------------------------------------------------------- guide, recherche, sessions */
+.flm-guide { display: flex; align-items: flex-start; gap: 10px; padding: 8px 4px; border-bottom: 1px solid var(--flm-g2); transition: background .2s, opacity .3s; }
+.flm-guide:hover { background: var(--flm-zebra); }
+.flm-guide .flm-check { flex: 1; }
+.flm-guide.done > .flm-check span { opacity: .5; }
+.flm-livre li { margin: 6px 0; }
+.flm-results { list-style: none !important; padding-left: 0 !important; }
+.flm-results li { padding: 5px 4px; border-bottom: 1px solid var(--flm-g2); font-family: var(--flm-ui); font-size: 14px; transition: background .15s; }
+.flm-results li:hover { background: var(--flm-zebra); }
+.flm-session { margin-bottom: 12px; }
+.flm-session h4 { margin-top: 0; }
+.flm-session label.flm-hint { display: block; margin-top: 8px; }
+
+/* ---------------------------------------------------------------- vers Vond */
+.flm-assaut { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.flm-total { font-family: var(--flm-ui); font-weight: bold; font-size: 22px; color: var(--flm-accent); margin-left: 6px; vertical-align: middle; }
+.fl-marchand .flm-table td.flm-bonus { font-family: var(--flm-ui); font-weight: bold; font-size: 15px; text-align: right; white-space: nowrap; }
+.flm-fin { padding: 8px 4px; border-bottom: 1px solid var(--flm-g2); transition: background .25s, opacity .3s; }
+.flm-fin.touche, .flm-touche-ex { background: color-mix(in srgb, var(--flm-sand) 30%, var(--flm-paper)); }
+.flm-fin.done { opacity: .55; }
+.flm-fin-who { margin-left: 26px !important; font-family: var(--flm-ui); font-size: 13px; }
+
+/* ---------------------------------------------------------------- points flous, croyances, secrets */
+.flm-ctr { margin: 8px 0; }
+.flm-ctr.done { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--flm-teal) 40%, transparent)); }
+.flm-ctr > b { display: block; font-family: var(--flm-head); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 4px; }
+.flm-ctr input[type="text"] { width: 100%; margin-top: 6px; }
+.fl-marchand .flm-ver td.flm-croit { font-family: var(--flm-text); font-style: italic; color: #6b4a08; }
+.flm-secret { padding: 4px 0; }
+.flm-secret span { transition: opacity .3s; }
+.flm-secret.su span { opacity: .5; text-decoration: line-through; }
+
+/* ---------------------------------------------------------------- frise */
+.fl-marchand .flm-frise { list-style: none; margin: 0; padding: 0 0 0 160px; position: relative; }
+.flm-frise::before { content: ""; position: absolute; left: 142px; top: 0; bottom: 0; width: 2px; background: var(--flm-ink); opacity: .3; }
+.flm-fr { position: relative; padding: 5px 0 9px 20px; transition: background .2s; }
+.flm-fr:hover { background: var(--flm-zebra); }
+.flm-fr-dot { position: absolute; left: -24px; top: 10px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--flm-ink); background: var(--flm-paper); transition: transform .2s; }
+.flm-fr:hover .flm-fr-dot { transform: scale(1.25); }
+.flm-fr-when { position: absolute; left: -160px; top: 6px; width: 120px; text-align: right; font-family: var(--flm-ui); font-size: 12.5px; color: var(--flm-g6); line-height: 1.2; }
+.flm-fr-what b { font-family: var(--flm-text); font-weight: normal; font-size: 15.5px; }
+.flm-fr.session .flm-fr-dot { background: #4a7fc1; border-color: #234a72; }
+.flm-fr.fait .flm-fr-dot { background: var(--flm-teal-d); border-color: var(--flm-teal-d); }
+.flm-fr.manque .flm-fr-dot { background: #d8a24a; }
+.flm-fr.now { background: color-mix(in srgb, var(--flm-accent) 8%, var(--flm-paper)); border-radius: 3px; }
+.flm-fr.now .flm-fr-dot { background: var(--flm-accent); border-color: var(--flm-accent); width: 16px; height: 16px; left: -26px; top: 8px; animation: flm-pulse 2.4s ease-in-out infinite; }
+.flm-fr.futur .flm-fr-dot { border-style: dashed; }
+.flm-fr.horloge .flm-fr-dot { border-radius: 2px; background: #ecd09a; }
+.flm-fr.livre-futur .flm-fr-dot { background: var(--flm-g2); border-style: dotted; }
+.flm-fr-sec {
+  margin: 18px 0 8px -160px; padding-bottom: 2px; font-family: var(--flm-head); font-size: 15px; text-transform: uppercase; letter-spacing: .5px;
+  border-bottom: 1px solid var(--flm-g2);
+}
+.flm-fr-vide { padding: 2px 0 8px 20px; }
+
+/* ---------------------------------------------------------------- relations */
+.flm-graph {
+  width: 100%; height: auto; background: color-mix(in srgb, var(--flm-sand) 10%, var(--flm-paper));
+  border: 6px solid transparent;
+  border-image: url("../../../systems/forbidden-lands/assets/journal-art/small-border.webp") 100 / 10px repeat;
+}
+.flm-edge { stroke-width: 1.6; opacity: .55; transition: opacity .2s, stroke-width .2s; }
+.flm-edge.allie { stroke: var(--flm-teal-d); }
+.flm-edge.ennemi { stroke: var(--flm-accent); }
+.flm-edge.mixte { stroke: #c98a1a; stroke-dasharray: 5 3; }
+.flm-node { cursor: pointer; transition: opacity .2s; }
+.flm-node circle { stroke: var(--flm-ink); stroke-width: 1.3; fill: #e6e3de; }
+.flm-node circle.att-hostile, .flm-node circle.att-ennemi { fill: #e3a597; }
+.flm-node circle.att-mefiant { fill: #ecd09a; }
+.flm-node circle.att-amical, .flm-node circle.att-allie { fill: #9fd1c9; }
+.flm-node text { font-family: var(--flm-text); font-size: 12.5px; fill: var(--flm-ink); paint-order: stroke; stroke: var(--flm-paper); stroke-width: 3px; }
+.flm-node.dead { opacity: .4; }
+.flm-graph.focus .flm-edge { opacity: .07; }
+.flm-graph.focus .flm-node { opacity: .2; }
+.flm-graph.focus .flm-edge.hi { opacity: 1; stroke-width: 2.6; }
+.flm-graph.focus .flm-node.hi { opacity: 1; }
+.flm-legend { margin-left: auto; font-family: var(--flm-ui); font-size: 13px; color: var(--flm-g6); }
+.flm-legend .l { display: inline-block; width: 18px; height: 3px; vertical-align: middle; margin: 0 4px 0 12px; }
+.flm-legend .l.allie { background: var(--flm-teal-d); }
+.flm-legend .l.ennemi { background: var(--flm-accent); }
+.flm-legend .l.mixte { background: #c98a1a; }
+
+/* ---------------------------------------------------------------- fenêtres de dialogue du module */
+.flm-dlg { font-family: "IM Fell Great Primer", "IM Fell DW Pica", Georgia, serif; font-size: 15px; }
+.flm-dlg .flm-hint { color: #707070; font-style: italic; font-size: 13px; }
+.flm-dlg .flm-check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.flm-rumeur-txt { font-size: 18px; font-style: italic; margin: 10px 0; text-align: center; }
+
+/* personnage surligné dans le livre */
+.flm-flash { background: #fff1a8 !important; color: #222 !important; outline: 3px solid #fff1a8; transition: background 1s; }
+
+/* ---------------------------------------------------------------- animations */
+@keyframes flm-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flm-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes flm-unfold { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes flm-pop { 0% { transform: scale(.5); } 60% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes flm-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--flm-accent) 45%, transparent); } 50% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes flm-raven-in { from { opacity: 0; transform: translate(16px, -12px) rotate(4deg); } to { opacity: .92; transform: none; } }
+.flm-enter { animation: flm-enter .26s var(--flm-ease); }
+
+@media (prefers-reduced-motion: reduce) {
+  .fl-marchand *, .fl-marchand *::before, .fl-marchand *::after { animation: none !important; transition: none !important; }
+}
+
+/* =====================================================================================
+   Propre au Marchand
+   ===================================================================================== */
+.flm-week { margin-left: auto; color: rgba(255, 255, 255, .8); font-family: var(--flm-ui); font-size: 12.5px; white-space: nowrap; }
+.flm-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+.flm-split-l { grid-template-columns: 240px minmax(0, 1fr); }
+.flm-side { overflow-y: auto; min-height: 0; padding: 14px; border-left: 1px solid var(--flm-g2); box-shadow: inset 8px 0 10px -10px rgba(0, 0, 0, .35); }
+.flm-head { margin-bottom: 8px; text-align: center; }
+.flm-center { text-align: center; }
+.flm-right { text-align: right; }
+.flm-inline { font-family: var(--flm-ui); font-size: 13.5px; display: inline-flex; align-items: center; gap: 6px; }
+.flm-inline select { width: auto; min-width: 180px; }
+
+/* catégories : petites pastilles */
+.flm-cats { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: center; margin: 6px 0 8px; }
+.fl-marchand .flm-cats a {
+  font-family: var(--flm-ui); font-size: 12.5px; color: var(--flm-g6); padding: 2px 9px; border: 1px solid var(--flm-g2); border-radius: 12px;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.fl-marchand .flm-cats a:hover { color: var(--flm-ink); border-color: var(--flm-g4); text-shadow: none; }
+.fl-marchand .flm-cats a.active { background: var(--flm-g8); color: #fff; border-color: var(--flm-g8); }
+.application.fl-marchand input.flm-find { display: block; width: 260px; margin: 0 auto 10px; }
+
+/* lignes de prix */
+.fl-marchand .flm-ligne td { vertical-align: middle; }
+.fl-marchand .flm-name { color: var(--flm-ink); }
+.fl-marchand .flm-name i { color: var(--flm-g4); width: 10px; transition: transform .2s var(--flm-ease); }
+.fl-marchand .flm-ligne.open .flm-name i { transform: rotate(90deg); color: var(--flm-accent); }
+.fl-marchand .flm-ligne.flm-off td { opacity: .5; }
+.fl-marchand .flm-price { white-space: nowrap; text-align: right; }
+.fl-marchand .flm-price s { color: var(--flm-g4); font-size: 12px; margin-right: 3px; }
+.fl-marchand .flm-price b { font-family: var(--flm-ui) !important; font-size: 14px !important; }
+.fl-marchand .flm-why td { background: color-mix(in srgb, var(--flm-sand) 14%, var(--flm-paper)) !important; }
+.fl-marchand .flm-why div { animation: flm-unfold .25s var(--flm-ease); padding: 2px 6px 4px 18px; font-family: var(--flm-text); font-size: 14px; }
+.fl-marchand .flm-why ul { margin: 2px 0 4px; }
+.flm-src { font-family: var(--flm-ui); font-size: 11px; color: var(--flm-g6); font-style: italic; margin-left: 4px; }
+.flm-dispo { font-family: var(--flm-ui); font-size: 11.5px; padding: 0 7px; border-radius: 9px; white-space: nowrap; background: #e6e3de; color: #4a4542; }
+.flm-dI { background: #f1e4c6; color: #6b4a08; }
+.flm-dR { background: #f3d6d0; color: #8a0303; }
+.flm-dX { background: transparent; color: var(--flm-g4); }
+.flm-ok { color: var(--flm-teal-d); font-family: var(--flm-ui); font-size: 12.5px; white-space: nowrap; }
+.flm-no { color: var(--flm-accent); font-family: var(--flm-ui); font-size: 12.5px; white-space: nowrap; cursor: help; }
+.application.fl-marchand button.flm-add { padding: 1px 7px; border-radius: 50%; transition: background .15s, transform .15s; }
+.application.fl-marchand button.flm-add:hover { background: var(--flm-g8); color: #fff; }
+.flm-pop { animation: flm-pop .3s var(--flm-ease); }
+
+/* panier */
+.flm-cart h3 { margin-bottom: 4px; }
+.flm-cart select { width: auto; }
+.fl-marchand .flm-cart-t td { padding: 4px 4px; vertical-align: middle; font-size: 13px; }
+.application.fl-marchand .flm-cart-t input[type=number] { width: 48px; min-width: 0; padding: 0 4px; }
+.application.fl-marchand .flm-cart-t select { font-size: 12px; padding: 0 2px; }
+.flm-total { font-family: var(--flm-ui); font-weight: bold; font-size: 16px; text-align: right; margin: 8px 0 !important; }
+.flm-cart button[data-act=acheter] { width: 100%; }
+.flm-cart button[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* lieux */
+.flm-list { padding: 10px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--flm-g2); }
+.fl-marchand .flm-lieu { display: block; padding: 6px 10px; color: var(--flm-ink); border-left: 3px solid transparent; transition: background .2s, border-color .2s; font-family: var(--flm-ui); font-size: 14px; }
+.fl-marchand .flm-lieu:hover { background: var(--flm-zebra); text-shadow: none; }
+.fl-marchand .flm-lieu.active { background: color-mix(in srgb, var(--flm-accent) 9%, var(--flm-paper)); border-left-color: var(--flm-accent); }
+.flm-list button { margin-top: 4px; }
+.flm-etabs { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 4px 12px; }
+.flm-etabs label { font-family: var(--flm-ui); font-size: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px; }
+.flm-etabs label .flm-hint { flex-basis: 100%; padding-left: 22px; font-size: 12px; line-height: 1.2; }
+.flm-fact { display: flex; gap: 6px; align-items: center; margin: 4px 0; font-family: var(--flm-ui); animation: flm-fade .25s; }
+.application.fl-marchand .flm-fact select { width: auto; flex: 1; }
+.application.fl-marchand .flm-fact input[type=number] { width: 64px; }
+.application.fl-marchand .flm-fact input[type=text] { flex: 1; }
+.fl-marchand a.flm-danger { color: var(--flm-accent); font-family: var(--flm-ui); font-size: 13px; }
+.flm-card label { font-family: var(--flm-ui); font-size: 13.5px; }
+.flm-card p label { margin-right: 10px; }
+.application.fl-marchand .flm-card input[type=text] { width: 220px; }
+.application.fl-marchand .flm-card input[type=number] { width: 60px; }
+.flm-pc { display: block; padding: 3px 0; }
+.flm-text .flm-board { grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); }
+
+@container (max-width: 760px) { .flm-split { grid-template-columns: 1fr; } }
+
+/* messages du tchat */
+.flm-chat h3 { font-family: "IM Fell DW Pica SC", Georgia, serif; font-size: 15px; border-bottom: 1px solid #999; margin: 0 0 4px; }
+.flm-chat .flm-chat-act { display: flex; gap: 6px; margin-top: 6px; }
+.flm-chat .flm-chat-res { margin-top: 6px; padding-top: 4px; border-top: 1px dashed #999; }
+.flm-chat .flm-hint { color: #707070; font-style: italic; }
+.flm-chat .flm-alert { color: #a00404; font-weight: bold; }
+.application.fl-marchand .flm-text input[type=number] { width: 58px; height: 24px; }
+.fl-marchand .flm-ovr a { font-family: var(--flm-ui); font-size: 13px; color: var(--flm-g6); }
+.fl-marchand .flm-ovr a.active { color: var(--flm-accent); font-weight: bold; }

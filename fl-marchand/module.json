@@ -1,0 +1,40 @@
+{
+  "id": "fl-marchand",
+  "title": "Forbidden Lands – Le Marchand",
+  "version": "1.0.0",
+  "description": "Tous les prix du Manuel du joueur, des échoppes par lieu (ce qu'on y trouve ou pas), la disponibilité des objets inhabituels et rares tirée chaque semaine, des prix qui varient selon le lieu et la rareté avec l'explication de chaque prix, les achats et les ventes des joueurs validés par le MJ (argent retiré, monnaie rendue, objets ajoutés à la fiche) et l'auberge pour tout le groupe.",
+  "authors": [
+    {
+      "name": "DAC 3D"
+    }
+  ],
+  "compatibility": {
+    "minimum": "13",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "forbidden-lands",
+        "type": "system"
+      }
+    ],
+    "recommends": [
+      {
+        "id": "fl-temps",
+        "type": "module",
+        "reason": "La disponibilité suit les semaines du calendrier."
+      }
+    ]
+  },
+  "esmodules": [
+    "scripts/fl-marchand.mjs"
+  ],
+  "styles": [
+    "styles/fl-marchand.css"
+  ],
+  "languages": [],
+  "url": "https://github.com/Dorian-HR/forbidden-lands-modules",
+  "manifest": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-marchand/module.json",
+  "download": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/dist/fl-marchand.zip"
+}
