@@ -218,7 +218,24 @@ async function chercherPortraits() {
     if (JSON.stringify(e.portraits ?? {}) !== JSON.stringify(map)) { e.portraits = map; await saveEtat(e); }
   } catch { /* dossier absent : pas de portraits */ }
 }
-const portraitDe = (id) => etat().portraits?.[id] ?? null;
+/** Portrait : celui du dossier du MJ s'il y en a un, sinon celui fourni avec le module. */
+const portraitDe = (id) => etat().portraits?.[id] ?? (GARDE[id] ? `modules/${MOD}/portraits/${id}.webp` : null);
+const jetonDe = (id) => (etat().portraits?.[id] ? etat().portraits[id] : `modules/${MOD}/portraits/${id}-token.webp`);
+const IMG_DEFAUT = (img) => !img || /mystery-man|icons\/svg\//.test(img);
+/** Donne leur portrait et leur jeton aux fiches de gardes qui n'ont pas encore d'image choisie par le MJ. */
+async function habillerGardes() {
+  for (const a of game.actors.filter((x) => x.getFlag?.(MOD, "garde"))) {
+    const id = a.getFlag(MOD, "garde"); const img = portraitDe(id); const tok = jetonDe(id);
+    const maj = {};
+    if (IMG_DEFAUT(a.img)) maj.img = img;
+    if (IMG_DEFAUT(a.prototypeToken?.texture?.src)) maj["prototypeToken.texture.src"] = tok;
+    if (Object.keys(maj).length) await a.update(maj);
+    for (const sc of game.scenes ?? []) {
+      const toks = sc.tokens.filter((t) => t.actorId === a.id && IMG_DEFAUT(t.texture?.src));
+      if (toks.length) await sc.updateEmbeddedDocuments("Token", toks.map((t) => ({ _id: t.id, "texture.src": tok })));
+    }
+  }
+}
 const ATTR = ["strength", "agility", "wits", "empathy"];
 const COMP = { melee: "Mêlée", marksmanship: "Tir", endurance: "Endurance", survival: "Survie", scouting: "Repérage", insight: "Intuition", might: "Puissance", move: "Mouvement", stealth: "Furtivité", healing: "Soins", manipulation: "Manipulation", lore: "Érudition", "animal-handling": "Dressage", crafting: "Artisanat", "sleight-of-hand": "Dextérité", performance: "Représentation" };
 /** Crée la fiche de PNJ d'un garde : PNJ « Soldat » du Guide du MJ (p. 183) ajusté, avec son histoire et son équipement. */
@@ -235,8 +252,7 @@ async function ficheGarde(g, employeur = null, ouvrir = true) {
     note: { value: `<p><b>Caractère :</b> ${g.traits}</p><p>${g.histoire}</p><p><b>Ce qu'il veut :</b> ${g.veut}</p><p><i>${g.replique}</i></p>${employeur ? `<p>Engagé par ${employeur}.</p>` : ""}` } } };
   ATTR.forEach((k, i) => { system.attribute[k] = { value: g.attr[i], max: g.attr[i] }; });
   for (const [k, v] of Object.entries(g.comp)) system.skill[k] = { value: v };
-  const img = portraitDe(g.id);
-  const actor = await Actor.create({ name: g.nom, type: "character", system, folder, flags: { [MOD]: { garde: g.id } }, ...(img ? { img, prototypeToken: { texture: { src: img } } } : {}) });
+  const actor = await Actor.create({ name: g.nom, type: "character", system, folder, flags: { [MOD]: { garde: g.id } }, img: portraitDe(g.id), prototypeToken: { name: g.nom, texture: { src: jetonDe(g.id) } } });
   for (const nom of g.equip) { const t = TARIFS.find((x) => x.nom === nom); if (t) await donnerObjet(actor, t, 1); }
   if (ouvrir) actor.sheet?.render(true);
   return actor;
@@ -1312,7 +1328,7 @@ function open() { app ??= new MarchandApp(); app.render({ force: true }); }
 
 Hooks.once("init", () => {
   game.settings.register(MOD, "etat", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
-  game.settings.register(MOD, "portraits", { name: "Dossier des portraits des gardes", hint: "Dossier de vos données Foundry où vous déposez les portraits, nommés comme dans le fichier de prompts (brenna.webp, orvik.png…).", scope: "world", config: true, type: String, default: "fl-portraits/gardes", onChange: () => chercherPortraits().then(appMaj) });
+  game.settings.register(MOD, "portraits", { name: "Dossier des portraits des gardes", hint: "Les portraits sont fournis avec le module. Pour en mettre d'autres, indiquez ici un dossier de vos données Foundry avec des images nommées comme les gardes (brenna.webp, orvik.png…).", scope: "world", config: true, type: String, default: "fl-portraits/gardes", onChange: () => chercherPortraits().then(appMaj) });
   game.settings.register(MOD, "gardesCrees", { scope: "world", config: false, type: Boolean, default: false });
   game.settings.register(MOD, "regles", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
   game.keybindings.register(MOD, "open", { name: "Ouvrir le Marchand", editable: [{ key: "KeyM", modifiers: ["Alt"] }], onDown: () => { open(); return true; } });
@@ -1328,6 +1344,7 @@ Hooks.once("ready", () => {
       await game.settings.set(MOD, "gardesCrees", true);
       if (n) ui.notifications.info(`Le Marchand : ${n} fiches de gardes du corps créées dans le dossier « Gardes du corps ».`);
     }
+    await habillerGardes();
   }, 2000);
 });
 
