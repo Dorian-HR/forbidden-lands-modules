@@ -2,7 +2,7 @@
 // Prix du Manuel du joueur, échoppes par lieu avec stock et bourse du marchand, disponibilité tirée chaque semaine,
 // achats, ventes, troc et commandes validés par le MJ, trouvailles à revendre, journaliers, auberge, carnet de dépenses,
 // et l'explication de chaque prix.
-import { TARIFS, CATEGORIES, ETABS, DISPO, FACTEURS, FAB, TRESORS, JOURNALIERS } from "./tarifs.mjs";
+import { TARIFS, CATEGORIES, ETABS, DISPO, FACTEURS, FAB, TRESORS, JOURNALIERS, statsSysteme } from "./tarifs.mjs";
 import { GARDES, promptImage } from "./gardes.mjs";
 
 const MOD = "fl-marchand";
@@ -222,9 +222,13 @@ const portraitDe = (id) => etat().portraits?.[id] ?? null;
 const ATTR = ["strength", "agility", "wits", "empathy"];
 const COMP = { melee: "Mêlée", marksmanship: "Tir", endurance: "Endurance", survival: "Survie", scouting: "Repérage", insight: "Intuition", might: "Puissance", move: "Mouvement", stealth: "Furtivité", healing: "Soins", manipulation: "Manipulation", lore: "Érudition", "animal-handling": "Dressage", crafting: "Artisanat", "sleight-of-hand": "Dextérité", performance: "Représentation" };
 /** Crée la fiche de PNJ d'un garde : PNJ « Soldat » du Guide du MJ (p. 183) ajusté, avec son histoire et son équipement. */
-async function ficheGarde(g, employeur = null) {
+async function dossierGardes() {
+  return game.folders.find((f) => f.type === "Actor" && f.name === "Gardes du corps") ?? Folder.create({ name: "Gardes du corps", type: "Actor" });
+}
+async function ficheGarde(g, employeur = null, ouvrir = true) {
   const deja = game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id);
-  if (deja) { deja.sheet?.render(true); return deja; }
+  if (deja) { if (ouvrir) deja.sheet?.render(true); return deja; }
+  const folder = (await dossierGardes())?.id;
   const system = { subtype: { type: "npc" }, attribute: {}, skill: {}, bio: {
     kin: { value: g.peuple }, profession: { value: "Garde du corps" }, age: { value: g.age }, pride: { value: g.fierte }, darkSecret: { value: g.secret },
     face: { value: g.visage }, body: { value: g.corps }, clothing: { value: g.tenue },
@@ -232,9 +236,9 @@ async function ficheGarde(g, employeur = null) {
   ATTR.forEach((k, i) => { system.attribute[k] = { value: g.attr[i], max: g.attr[i] }; });
   for (const [k, v] of Object.entries(g.comp)) system.skill[k] = { value: v };
   const img = portraitDe(g.id);
-  const actor = await Actor.create({ name: g.nom, type: "character", system, flags: { [MOD]: { garde: g.id } }, ...(img ? { img, prototypeToken: { texture: { src: img } } } : {}) });
+  const actor = await Actor.create({ name: g.nom, type: "character", system, folder, flags: { [MOD]: { garde: g.id } }, ...(img ? { img, prototypeToken: { texture: { src: img } } } : {}) });
   for (const nom of g.equip) { const t = TARIFS.find((x) => x.nom === nom); if (t) await donnerObjet(actor, t, 1); }
-  actor.sheet?.render(true);
+  if (ouvrir) actor.sheet?.render(true);
   return actor;
 }
 
@@ -325,9 +329,12 @@ async function donnerObjet(actor, t, qte) {
   let data;
   if (hit) { const doc = await game.packs.get(hit.pack)?.getDocument(hit.id); if (doc) data = doc.toObject(); }
   const trouve = !!data;
-  data ??= { name: t.nom, type: t.itemType, system: { cost: prixTxt(t.prix, true), supply: DISPO[t.dispo] ?? "", weight: t.weight } };
+  if (!data) {
+    const st = statsSysteme(t.nom);
+    data = { name: t.nom, type: st?.type ?? t.itemType, system: { ...(st?.system ?? {}), cost: prixTxt(t.prix, true), supply: DISPO[t.dispo] ?? "", weight: t.weight } };
+  }
   await creerObjet(actor, data, qte);
-  return { cree: true, trouve };
+  return { cree: true, trouve: trouve || !!statsSysteme(t.nom) };
 }
 const voieOr = (actor) => actor?.items?.find((i) => i.type === "talent" && /voie de l or|path of gold/.test(norm(i.name)));
 /** Le MJ voit tous les personnages (ceux des joueurs d'abord) ; un joueur ne voit que les siens. */
@@ -924,7 +931,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       <div class="flm-buttons"><button type="button" data-garde="${g.id}"><i class="fa-solid fa-handshake"></i> ${gm ? "Engager" : "Demander à l'engager"}</button>
         ${gm ? `<button type="button" data-fiche-garde="${g.id}"><i class="fa-solid fa-id-card"></i> Créer sa fiche</button><button type="button" data-prompt-garde="${g.id}" title="Copie un texte à coller dans ChatGPT pour créer son portrait"><i class="fa-solid fa-image"></i> Prompt image</button>` : ""}</div></div>`;
     return `<h3 class="flm-center">Gardes du corps — ${esc(lieu.nom)}</h3>
-      <p class="flm-hint flm-center">Personnages inventés pour le module ; prix du service du livre (Manuel p. 180), chiffres d'après le Soldat du Guide du MJ (p. 183).${gm ? ` <a data-act="autres-gardes"><i class="fa-solid fa-shuffle"></i> D'autres gardes</a>` : ""}</p>
+      <p class="flm-hint flm-center">Personnages inventés pour le module ; prix du service du livre (Manuel p. 180), chiffres d'après le Soldat du Guide du MJ (p. 183).${gm ? ` <a data-act="autres-gardes"><i class="fa-solid fa-shuffle"></i> D'autres gardes</a> · <a data-act="toutes-fiches"><i class="fa-solid fa-users"></i> Créer les fiches des ${GARDES.length} gardes</a>` : ""}</p>
       ${ids.length ? `<div class="flm-gardes">${ids.map((id) => carte(GARDE[id])).join("")}</div>` : `<p class="flm-hint flm-center">Plus de garde du corps disponible ici.</p>`}`;
   }
 
@@ -1040,6 +1047,12 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       case "semaine": { const e = etat(); e.semaine = (e.semaine ?? 0) + 1; await saveEtat(e); await majStocks({ tous: true }); return this.render(); }
       case "ouvrir": return this.#ouvrir(etat().ouvert === this.lieuVu ? null : this.lieuVu);
       case "salaires": await payerSalaires({ force: true }); return this.render();
+      case "toutes-fiches": {
+        if (!(await DV().confirm({ window: { title: "Fiches des gardes du corps" }, content: `<p>Créer les fiches de PNJ des ${GARDES.length} gardes du corps (dans un dossier « Gardes du corps ») ? Celles qui existent déjà ne sont pas refaites.</p>` }))) return;
+        let n = 0;
+        for (const g of GARDES) { if (!game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id)) { await ficheGarde(g, null, false); n++; } }
+        return ui.notifications.info(`${n} fiche(s) créée(s) dans le dossier « Gardes du corps ».`);
+      }
       case "autres-gardes": { const e = etat(); const l = e.lieux[this.#lieuCourant()?.id]; if (!l) return; assignerGardes(e, l); await saveEtat(e); return this.render(); }
       case "carnet-vider": {
         if (!(await DV().confirm({ window: { title: "Vider le carnet" }, content: "<p>Effacer tout le carnet de dépenses ?</p>" }))) return;
@@ -1300,12 +1313,22 @@ function open() { app ??= new MarchandApp(); app.render({ force: true }); }
 Hooks.once("init", () => {
   game.settings.register(MOD, "etat", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
   game.settings.register(MOD, "portraits", { name: "Dossier des portraits des gardes", hint: "Dossier de vos données Foundry où vous déposez les portraits, nommés comme dans le fichier de prompts (brenna.webp, orvik.png…).", scope: "world", config: true, type: String, default: "fl-portraits/gardes", onChange: () => chercherPortraits().then(appMaj) });
+  game.settings.register(MOD, "gardesCrees", { scope: "world", config: false, type: Boolean, default: false });
   game.settings.register(MOD, "regles", { scope: "world", config: false, type: Object, default: {}, onChange: () => appMaj() });
   game.keybindings.register(MOD, "open", { name: "Ouvrir le Marchand", editable: [{ key: "KeyM", modifiers: ["Alt"] }], onDown: () => { open(); return true; } });
 });
 Hooks.once("ready", () => {
   globalThis.FLMarchand = { open, prix: (nom) => TARIFS.find((t) => norm(t.nom) === norm(nom)) };
-  if (isActiveGM()) setTimeout(() => { verifierCommandes(); payerSalaires(); chercherPortraits(); }, 2000);
+  if (isActiveGM()) setTimeout(async () => {
+    verifierCommandes(); payerSalaires(); await chercherPortraits();
+    // Première fois : les fiches des gardes du corps sont créées toutes seules, dans le dossier « Gardes du corps ».
+    if (!game.settings.get(MOD, "gardesCrees")) {
+      let n = 0;
+      for (const g of GARDES) if (!game.actors.find((a) => a.getFlag?.(MOD, "garde") === g.id)) { await ficheGarde(g, null, false); n++; }
+      await game.settings.set(MOD, "gardesCrees", true);
+      if (n) ui.notifications.info(`Le Marchand : ${n} fiches de gardes du corps créées dans le dossier « Gardes du corps ».`);
+    }
+  }, 2000);
 });
 
 Hooks.on("getSceneControlButtons", (controls) => {

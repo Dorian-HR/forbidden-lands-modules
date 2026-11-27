@@ -352,3 +352,40 @@ export const JOURNALIERS = [
   ["Tailleur", 8, "C", "Échoppe de tailleur, vêtements ; réussit sur un seul x."],
   ["Tanneur", 6, "I", "Tannerie, cuir ; réussit sur un seul x."]
 ];
+
+/* ------------------------------------------------------------------ caractéristiques des armes et armures (Manuel p. 101-106)
+   Armes : [prise, bonus, dégâts, portée, traits]. Armures : [protection, partie]. Boucliers : bonus. */
+const F = { C: "blunt", P: "pointed", T: "edged", Pa: "parrying", Cr: "hook", R: "slowReload" };
+export const ARMES = {
+  "Couteau": ["1h", 1, 1, "arm", "P", "Léger"], "Dague": ["1h", 1, 1, "arm", "P T", "Léger"], "Fauchon": ["1h", 1, 2, "arm", "P T"],
+  "Épée courte": ["1h", 2, 1, "arm", "Pa P T"], "Épée large": ["1h", 2, 2, "arm", "Pa P T"], "Épée bâtarde": ["1h", 2, 2, "arm", "Pa P T", "Lourd"],
+  "Épée à deux mains": ["2h", 2, 3, "arm", "Pa P T", "Lourd"], "Cimeterre": ["1h", 1, 2, "arm", "Cr Pa P T"], "Hachette": ["1h", 2, 2, "arm", "Cr T"],
+  "Hache de guerre": ["1h", 2, 2, "arm", "Cr T", "Lourd"], "Hache à deux mains": ["2h", 2, 3, "arm", "Cr T", "Lourd"], "Masse d'armes": ["1h", 2, 1, "arm", "C"],
+  "Morgenstern": ["1h", 2, 2, "arm", "C"], "Marteau de guerre": ["1h", 2, 2, "arm", "C Cr"], "Fléau d'armes": ["1h", 1, 2, "near", "C"],
+  "Gourdin": ["1h", 1, 1, "arm", "C"], "Massue": ["2h", 1, 2, "arm", "C", "Lourd"], "Grand marteau de guerre": ["2h", 2, 3, "arm", "C Cr", "Lourd"],
+  "Bâton": ["2h", 1, 1, "near", "C Cr Pa"], "Lance courte": ["1h", 1, 1, "near", "P"], "Lance longue": ["2h", 2, 1, "near", "P"],
+  "Pique": ["2h", 2, 2, "near", "P", "Lourd"], "Hallebarde": ["2h", 2, 2, "near", "Cr P T", "Lourd"], "Trident": ["2h", 1, 2, "near", "Cr P"],
+  "Couteau de lancer": ["1h", 1, 1, "near", "", "Léger", "ranged"], "Francisque": ["1h", 1, 2, "near", "", "", "ranged"], "Javelot": ["1h", 2, 1, "short", "", "", "ranged"],
+  "Fronde": ["1h", 1, 1, "short", "", "Léger", "ranged"], "Arc court": ["2h", 2, 1, "short", "", "Léger", "ranged", "arrows"], "Arc long": ["2h", 2, 1, "long", "", "", "ranged", "arrows"],
+  "Arbalète légère": ["2h", 1, 2, "long", "R", "", "ranged", "arrows"], "Arbalète lourde": ["2h", 1, 3, "long", "R", "Lourd", "ranged", "arrows"]
+};
+export const ARMURES = {
+  "Armure en cuir": [2, "body"], "Armure en cuir clouté": [3, "body"], "Cotte de mailles": [6, "body", "Protection 3 contre les flèches et les coups d'estoc."],
+  "Armure de plate": [8, "body", "Malus de −2 en Souplesse."], "Casque en cuir clouté": [1, "head"], "Cervelière": [2, "head"], "Spangenhelm": [3, "head"],
+  "Grand heaume": [4, "head", "Malus de −2 en Perception."]
+};
+export const BOUCLIERS = { "Petit bouclier": 1, "Grand bouclier": 2 };
+/** Données système complètes d'une arme, armure ou bouclier du livre (quand le compendium ne l'a pas). */
+export function statsSysteme(nom) {
+  const a = ARMES[nom];
+  if (a) {
+    const [grip, bonus, damage, range, traits, , cat = "melee", ammo = "other"] = a;
+    const features = { edged: false, pointed: false, blunt: false, parrying: false, hook: false, shield: false, slowReload: false, others: "" };
+    for (const k of traits.split(" ").filter(Boolean)) features[F[k]] = true;
+    return { type: "weapon", system: { category: cat, grip, bonus: { value: bonus, max: bonus }, damage, range, ammo, features } };
+  }
+  if (BOUCLIERS[nom] != null) return { type: "weapon", system: { category: "melee", grip: "1h", bonus: { value: BOUCLIERS[nom], max: BOUCLIERS[nom] }, damage: 0, range: "arm", features: { shield: true, edged: false, pointed: false, blunt: false, parrying: false, hook: false, slowReload: false, others: "" } } };
+  const r = ARMURES[nom];
+  if (r) return { type: "armor", system: { bonus: { value: r[0], max: r[0] }, part: r[1], features: r[2] ?? "" } };
+  return null;
+}
