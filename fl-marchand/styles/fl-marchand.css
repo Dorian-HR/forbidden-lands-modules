@@ -528,3 +528,15 @@
 .application.fl-marchand .flm-text input[type=number] { width: 58px; height: 24px; }
 .fl-marchand .flm-ovr a { font-family: var(--flm-ui); font-size: 13px; color: var(--flm-g6); }
 .fl-marchand .flm-ovr a.active { color: var(--flm-accent); font-weight: bold; }
+/* 1.1 : neuf onglets, marchands, troc, carnet */
+.fl-marchand .flm-tab { padding: 12px 11px 10px; font-size: 14.5px; }
+.flm-mchd { display: inline-block; margin: 0 8px; font-family: var(--flm-ui); font-size: 13px; }
+.flm-att.neutre { background: #e6e3de; color: #4a4542; }
+.flm-troc { margin: 6px 0; font-family: var(--flm-ui); font-size: 13px; }
+.flm-troc summary { cursor: pointer; color: var(--flm-accent); }
+.flm-trocl { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin: 3px 0; }
+.application.fl-marchand .flm-trocl input[type=number] { width: 52px; }
+.fl-marchand .flm-moins { color: var(--flm-accent); }
+.fl-marchand .flm-plus { color: var(--flm-teal-d); }
+.application.fl-marchand .flm-ovr input[type=number] { width: 54px; height: 22px; }
+.application.fl-marchand .flm-fact input[type=text] { width: auto; flex: 1; }

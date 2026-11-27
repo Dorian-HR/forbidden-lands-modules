@@ -9,7 +9,7 @@ Modules maison pour le système **Forbidden Lands** (Foundry VTT v13–v14), en 
 | **fl-lieux** – Ambiances des lieux | Sons d'ambiance des lieux selon l'heure, la météo et la saison ; tavernes ; musiques de combat | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-lieux/module.json` |
 | **fl-actions** – Barre d'actions | Barre d'actions du token sélectionné | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-actions/module.json` |
 | **fl-combat** – Combat automatisé | Actions lentes/rapides, défense, dégâts, armure, soins | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-combat/module.json` |
-| **fl-marchand** – Le Marchand | Prix du livre, échoppes par lieu, disponibilité chaque semaine, achats et ventes validés par le MJ, auberge | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-marchand/module.json` |
+| **fl-marchand** – Le Marchand | Prix du livre, échoppes avec stock et marchands, achats, ventes, troc et commandes validés par le MJ, trouvailles, journaliers, auberge, carnet | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-marchand/module.json` |
 | **fl-campagne** – Suivi de campagne (MJ) | Qui est où, qui veut quoi, sites, acteurs majeurs, horloges, préparation des sessions. Le contenu de la campagne s'importe depuis un fichier privé (aucun texte des livres ici) | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-campagne/module.json` |
 
 ## Installer
