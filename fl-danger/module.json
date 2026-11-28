@@ -1,0 +1,14 @@
+{
+  "id": "fl-danger",
+  "title": "Forbidden Lands – Le Danger",
+  "version": "1.0.0",
+  "description": "Estime le danger d'une rencontre pour votre groupe en simulant des centaines de combats selon les règles du Manuel, et propose des rencontres tirées de vos compendiums (monstres et PNJ), classées Facile, Tendu, Dangereux ou Mortel, à placer sur la scène d'un clic.",
+  "authors": [{ "name": "DAC 3D" }],
+  "compatibility": { "minimum": "13", "verified": "14" },
+  "relationships": { "systems": [{ "id": "forbidden-lands", "type": "system" }] },
+  "esmodules": ["scripts/fl-danger.mjs"],
+  "styles": ["styles/fl-danger.css"],
+  "url": "https://github.com/Dorian-HR/forbidden-lands-modules",
+  "manifest": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-danger/module.json",
+  "download": "https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/dist/fl-danger.zip"
+}

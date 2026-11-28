@@ -10,6 +10,7 @@ Modules maison pour le système **Forbidden Lands** (Foundry VTT v13–v14), en 
 | **fl-actions** – Barre d'actions | Barre d'actions du token sélectionné | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-actions/module.json` |
 | **fl-combat** – Combat automatisé | Actions lentes/rapides, défense, dégâts, armure, soins | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-combat/module.json` |
 | **fl-marchand** – Le Marchand | Prix du livre, échoppes avec stock et marchands, achats, ventes, troc et commandes validés par le MJ, trouvailles, journaliers, auberge, carnet | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-marchand/module.json` |
+| **fl-danger** – Le Danger | Estime le danger d'une rencontre (simulation de combats) et propose des rencontres à la mesure du groupe | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-danger/module.json` |
 | **fl-campagne** – Suivi de campagne (MJ) | Qui est où, qui veut quoi, sites, acteurs majeurs, horloges, préparation des sessions. Le contenu de la campagne s'importe depuis un fichier privé (aucun texte des livres ici) | `https://raw.githubusercontent.com/Dorian-HR/forbidden-lands-modules/main/fl-campagne/module.json` |
 
 ## Installer
