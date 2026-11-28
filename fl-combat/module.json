@@ -2,7 +2,7 @@
   "id": "fl-combat",
   "title": "Forbidden Lands – Combat automatisé",
   "description": "Actions lentes et rapides du round, fenêtre de défense (esquive / parade) avant l'attaque, calcul des dégâts et de l'armure, application validée par le MJ, état Brisé et blessures critiques, soins. Selon les règles du livre de base.",
-  "version": "1.1.4",
+  "version": "1.2.0",
   "authors": [
     {
       "name": "Le MJ et Claude"

@@ -47,6 +47,8 @@ function faces(roll) {
   for (const d of roll?.dice ?? []) for (const r of d.results ?? []) if (r.active !== false && !r.discarded) out.push(r.result);
   return out;
 }
+/** Le jet a-t-il déjà été poussé ? (le système crée alors un nouveau message, les anciens dés y restent inactifs) */
+function estPousse(r) { return !!(r?.pushed || r?.pushCount > 0 || r?.options?.pushed || (r?.dice ?? []).some((d) => (d.results ?? []).some((x) => x.active === false))); }
 function successes(roll) {
   if (!roll) return 0;
   if (typeof roll.successCount === "number") return roll.successCount;
@@ -167,9 +169,11 @@ Hooks.on("preCreateChatMessage", (msg, data) => {
   if (!p) {
     // Jet poussé : le système crée un nouveau message et supprime l'ancien. On reprend le lien de l'ancien.
     const r = msg.rolls[0];
-    const pousse = !!(r?.pushed || r?.pushCount > 0 || r?.options?.pushed || (r?.dice ?? []).some((d) => (d.results ?? []).some((x) => x.active === false)));
-    if (!pousse) return;
-    const avant = game.messages.contents.filter((m) => m.flags?.[MOD]?.fight && m.flags[MOD].role && m.speaker?.actor === id && Date.now() - (m.timestamp ?? 0) < 10 * 60 * 1000).at(-1);
+    if (!estPousse(r)) return;
+    const nomJet = (x) => x?.options?.name ?? x?.name ?? x?.formula ?? "";
+    const nbDes = (x) => (x?.dice ?? []).reduce((n, d) => n + (d.results ?? []).filter((y) => y.active !== false).length, 0);
+    const avant = game.messages.contents.filter((m) => m.flags?.[MOD]?.fight && m.flags[MOD].role && m.speaker?.actor === id
+      && Date.now() - (m.timestamp ?? Date.now()) < 10 * 60 * 1000 && nomJet(m.rolls?.[0]) === nomJet(r) && nbDes(m.rolls?.[0]) === nbDes(r)).at(-1);
     if (!avant) return;
     msg.updateSource({ [`flags.${MOD}`]: { fight: avant.flags[MOD].fight, role: avant.flags[MOD].role } });
     return;
@@ -281,7 +285,7 @@ async function rollDefense(req, choice) {
   const tok = await fromUuid(req.targetUuid);
   const actor = tok?.actor ?? tok;
   if (!actor) return;
-  if (!(await spend(actor, tok?.object ?? null, "fast"))) return;
+  if (!(await spend(actor, tok?.object ?? null, "fast"))) return defensePerdue(req.fight, "action rapide refusée");
   expect(req.fight, "defense", actor);
   internal = true;
   try {
@@ -293,6 +297,9 @@ async function rollDefense(req, choice) {
     }
   } catch (e) { ui.notifications.warn(e?.message ?? String(e)); }
   finally { internal = false; }
+  // Le joueur a fermé la fenêtre de jet sans lancer : la carte ne doit pas attendre pour rien.
+  await waitDefenseRoll(actor.id);
+  if (pending.get(actor.id)?.fight === req.fight) { pending.delete(actor.id); await defensePerdue(req.fight, "jet de défense annulé"); }
 }
 
 /** Une fenêtre de jet du système est-elle ouverte ? (il n'en accepte qu'une à la fois) */
@@ -338,6 +345,13 @@ Hooks.once("ready", () => {
   });
 });
 
+/** La défense n'aura pas lieu : la carte passe en « encaisse ». */
+const perdues = new Set();
+async function defensePerdue(fight, reason) {
+  perdues.add(fight);
+  const card = game.messages.contents.find((m) => m.getFlag(MOD, "card") && m.getFlag(MOD, "id") === fight);
+  if (card) await updateCard(card, { [`flags.${MOD}.defense`]: { choice: "none", reason } });
+}
 async function updateCard(card, update) {
   if (card.isOwner) return card.update(update);
   game.socket.emit(SOCKET, { t: "cardUpdate", id: card.id, update });
@@ -410,17 +424,17 @@ async function attackFlow(actor, item, rollFn) {
     if (who?.id === game.user.id) {
       choice = await askDefense(req);
       await updateCard(card, { [`flags.${MOD}.defense`]: { choice, reason } });
-      if (choice !== "none") {
-        await rollDefense(req, choice);
-        await waitDefenseRoll(tgt.actor.id); // le système n'ouvre qu'une fenêtre de jet à la fois
-      }
+      if (choice !== "none") await rollDefense(req, choice); // attend que le jet de défense soit lancé (une fenêtre de jet à la fois)
     } else if (who) {
       game.socket.emit(SOCKET, req);
-      choice = await new Promise((resolve) => waiting.set(fight, resolve)); // on attend la réponse, sans limite
+      choice = await new Promise((resolve) => {
+        waiting.set(fight, resolve);
+        setTimeout(() => { if (waiting.has(fight)) { reason = "pas de réponse du joueur"; resolve("none"); } }, 2 * 60 * 1000);
+      });
       waiting.delete(fight);
     }
   }
-  await updateCard(card, { [`flags.${MOD}.defense`]: { choice, reason } });
+  if (!perdues.has(fight)) await updateCard(card, { [`flags.${MOD}.defense`]: { choice, reason } });
   expect(fight, "attack", actor);
   return rollFn();
 }
@@ -562,12 +576,15 @@ async function renderAttackCard(msg, f) {
   const attenteDefense = s.defending && s.D === null && s.A !== null && s.A > 0;
   if (attenteDefense && game.user.isGM && !applied)
     btn.push(`<p class="flc-hint">Les dégâts se calculeront quand la défense sera lancée.</p><button type="button" data-flc="nodef">La défense n'arrive pas : compter sans défense</button>`);
+  const defRoll = s.r.defense?.rolls?.[0];
+  if (s.net > 0 && game.user.isGM && !applied && defRoll && !estPousse(defRoll) && defRoll.options?.maxPush !== 0)
+    btn.push(`<p class="flc-hint">${esc(f.target.name)} peut encore pousser sa défense : attendez sa décision avant d'appliquer.</p>`);
   if (s.net > 0 && game.user.isGM && !applied && !attenteDefense) {
     const v = s.final ?? s.dmg;
     btn.push(`<div class="flc-apply"><input type="number" min="0" value="${v}" data-flc-amount> <button type="button" data-flc="apply" data-attr="${attr}">Appliquer les dégâts (${ATTR_LABEL[attr]})</button></div>`);
     if (s.physical && s.Ar === null) btn.push(`<p class="flc-hint">Vous pouvez appliquer sans jet d'armure (cible sans armure, attaque qui l'ignore…).</p>`);
   }
-  if (applied) lines.push(`<p class="flc-done">✔ ${esc(applied)}</p>`);
+  if (applied) lines.push(`<p class="flc-done">✔ ${esc(applied)}${game.user.isGM && f.appliedMJ ? ` — ${esc(f.appliedMJ)}` : ""}</p>`);
   // Usure de l'armure : si des dégâts passent, −1 par 1 obtenu (pas les protections naturelles)
   if (game.user.isGM && s.Ar !== null && s.final > 0 && s.ones > 0 && !f.worn && tgt && tgt.type !== "monster") {
     const pieces = tgt.items.filter((i) => i.type === "armor" && i.system.part !== "shield" && (i.system.bonus?.value ?? 0) > 0 && i.getFlag?.("forbidden-lands", "state") === "equipped");
@@ -603,7 +620,7 @@ async function renderCareCard(msg, f) {
     btn.push(`<div class="flc-apply"><input type="number" min="0" value="${def}" data-flc-amount> <select data-flc-attr>${sel}</select>
       <button type="button" data-flc="heal">Rendre</button>${f.kind === "spell" ? ` <button type="button" data-flc="hurt">Infliger</button>` : ""}</div>`);
   }
-  if (f.applied) lines.push(`<p class="flc-done">✔ ${esc(f.applied)}</p>`);
+  if (f.applied) lines.push(`<p class="flc-done">✔ ${esc(f.applied)}${game.user.isGM && f.appliedMJ ? ` — ${esc(f.appliedMJ)}` : ""}</p>`);
   return `<div class="flc-card">${lines.join("")}${btn.join("")}</div>`;
 }
 
@@ -663,7 +680,8 @@ async function applyDelta(msg, f, actor, attr, delta) {
   const after = Math.max(0, Math.min(max, before + delta));
   await actor.update({ [`system.attribute.${attr}.value`]: after });
   const what = delta < 0 ? `${-delta} dégât${-delta > 1 ? "s" : ""}` : `${delta} point${delta > 1 ? "s" : ""} rendu${delta > 1 ? "s" : ""}`;
-  await msg.update({ [`flags.${MOD}.applied`]: `${what} — ${ATTR_LABEL[attr]} de ${actor.name} : ${before} → ${after}` });
+  // Les joueurs voient ce qui est infligé ; seul le MJ voit les points qui restent.
+  await msg.update({ [`flags.${MOD}.applied`]: what, [`flags.${MOD}.appliedMJ`]: `${ATTR_LABEL[attr]} de ${actor.name} : ${before} → ${after}` });
   if (after === 0 && before > 0) announceBroken(msg, f, actor, attr);
 }
 
@@ -725,8 +743,24 @@ for (const h of ["updateCombatant", "updateCombat"]) Hooks.on(h, () => ui.combat
 
 Hooks.once("init", () => {
   game.settings.register(MOD, "enabled", { name: "Automatiser les attaques ciblées", hint: "Quand un personnage attaque un token ciblé : fenêtre de défense, calcul des dégâts et de l'armure, bouton d'application pour le MJ.", scope: "world", config: true, type: Boolean, default: true });
+  game.settings.register(MOD, "barresMJ", { name: "Points de vie cachés aux joueurs", hint: "Les barres de vie des jetons ne sont visibles que par leur propriétaire et le MJ (monstres et PNJ : seulement le MJ). Dans les cartes de combat, les joueurs voient les dégâts infligés, jamais les points qui restent.", scope: "world", config: true, type: Boolean, default: true, onChange: (v) => v && cacherBarres() });
 });
+/** Barres de vie des jetons : visibles seulement par le propriétaire du jeton et le MJ. */
+const MODE_PROPRIO = () => CONST.TOKEN_DISPLAY_MODES?.OWNER ?? 40;
+Hooks.on("preCreateToken", (doc) => {
+  if (game.settings.get(MOD, "barresMJ") && doc.displayBars !== CONST.TOKEN_DISPLAY_MODES?.NONE) doc.updateSource({ displayBars: MODE_PROPRIO() });
+});
+async function cacherBarres() {
+  if (!isActiveGM() || !game.settings.get(MOD, "barresMJ")) return;
+  const visibles = [CONST.TOKEN_DISPLAY_MODES?.HOVER ?? 30, CONST.TOKEN_DISPLAY_MODES?.ALWAYS ?? 50];
+  for (const sc of game.scenes ?? []) {
+    const maj = sc.tokens.filter((t) => visibles.includes(t.displayBars)).map((t) => ({ _id: t.id, displayBars: MODE_PROPRIO() }));
+    if (maj.length) await sc.updateEmbeddedDocuments("Token", maj);
+  }
+  for (const a of game.actors ?? []) if (visibles.includes(a.prototypeToken?.displayBars)) await a.update({ "prototypeToken.displayBars": MODE_PROPRIO() });
+}
 Hooks.once("ready", () => {
   patchSheets();
+  cacherBarres();
   globalThis.flCombat = { remaining: (actor) => remaining(combatantOf(actor, tokenOf(actor), "fast")), spend };
 });
