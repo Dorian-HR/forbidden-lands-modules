@@ -549,3 +549,13 @@
 .flm-garde .flm-buttons { justify-content: center; }
 .flm-portrait { display: block; width: 120px; height: 160px; object-fit: cover; margin: 0 auto 6px; border: 3px solid var(--flm-g8); box-shadow: 0 2px 6px rgba(0,0,0,.3); }
 .flm-engage { border-image-source: none; border: 2px solid var(--flm-accent); }
+/* 1.6 : l'essentiel */
+.flm-etapes { list-style: none; counter-reset: et; max-width: 760px; margin: 10px auto; padding: 0; }
+.flm-etapes li { counter-increment: et; display: flex; gap: 14px; align-items: flex-start; padding: 10px 6px; border-bottom: 1px solid var(--flm-g2); animation: flm-fade .3s both; }
+.flm-etapes li::before { content: counter(et); font-family: var(--flm-title); font-size: 30px; color: var(--flm-accent); width: 26px; text-align: center; }
+.flm-etapes li > i { font-size: 20px; color: var(--flm-g8); margin-top: 6px; width: 24px; text-align: center; }
+.flm-etapes li p { margin: 2px 0 0; }
+.flm-etapes li:nth-child(2) { animation-delay: .05s; } .flm-etapes li:nth-child(3) { animation-delay: .1s; } .flm-etapes li:nth-child(4) { animation-delay: .15s; } .flm-etapes li:nth-child(5) { animation-delay: .2s; }
+.fl-marchand .flm-tab { padding: 12px 14px 10px; font-size: 15.5px; }
+.fl-marchand .flm-cats a.flm-voyage { border-color: var(--flm-teal); color: var(--flm-teal-d); font-weight: bold; }
+.flm-portrait { width: auto !important; height: auto !important; max-width: 170px; max-height: 250px; object-fit: contain !important; background: #fff; }

@@ -48,7 +48,8 @@ const RAW = {
     ["Carquois", c(8), "C", "", 182], ["Grappin", a(3), "I", "n", 182], ["Corde, 10 mètres", a(2), "C", "n", 182],
     ["Chandelle de suif", c(6), "C", "t", 182], ["Lampe à huile", c(5), "C", "l", 182], ["Lanterne", a(2), "C", "l", 182],
     ["Torches", c(5), "C", "n", 182], ["Sacoche", c(8), "C", "", 182], ["Sac à dos", a(4), "C", "", 182],
-    ["Outre", a(3), "C", "", 182], ["Bandages", c(6), "C", "l", 182], ["Huile pour lampe", c(2), "C", "l", 182],
+    ["Outre", a(3), "C", "", 182, "Contient un lot d'EAU (livrée pleine)."],
+    ["Eau (un lot)", c(1), "C", "", 182, "Pour remplir une outre. Le livre ne donne pas de prix : réglage maison."], ["Bandages", c(6), "C", "l", 182], ["Huile pour lampe", c(2), "C", "l", 182],
     ["Encre et plume", a(2), "I", "t", 182], ["Parchemin", c(6), "I", "t", 182], ["Couverture", c(7), "C", "l", 182],
     ["Couverture fourrée", a(3), "C", "n", 182],
     ["Briquet à silex", c(2), "C", "t", 184], ["Outils de crochetage", o(1), "I", "t", 184], ["Rations de voyage", a(1), "C", "n", 184],
@@ -157,18 +158,24 @@ const ETAB_PAR_NOM = {
   "Minerai de fer": ["forgeron"], "Fer": ["forgeron"], "Farine": ["moulin", "marche"], "Bois": ["scierie", "marche"],
   "Cheval de selle": ["ecurie"], "Destrier": ["ecurie"],
   "Canoë": ["port"], "Barque": ["port"], "Bateau à voile": ["port"],
+  "Eau (un lot)": ["auberge", "taverne", "marche"], "Outre": ["marche", "auberge"],
   "Grappin": ["forgeron", "marche"], "Lanterne": ["forgeron", "marche"], "Outils de crochetage": ["forgeron", "marche"], "Piège à ours": ["forgeron", "marche"]
 };
 
 const ITEM_TYPE = { melee: "weapon", distance: "weapon", armures: "armor", matieres: "rawMaterial" };
 const SYS_WEIGHT = { t: "tiny", l: "light", n: "regular", h: "heavy", "": "none" };
 
+/** Provisions : un lot acheté monte le dé de Ressource d'un cran (Manuel p. 37). */
+export const RESSOURCES = { "Rations de voyage": "food", "Eau (un lot)": "water", "Outre": "water", "Flèches, pointes en métal": "arrows", "Flèches, pointes en bois": "arrows", "Torches": "torches" };
+/** Le rayon « Pour le voyage ». */
+export const VOYAGE = new Set(["Rations de voyage", "Eau (un lot)", "Outre", "Flèches, pointes en métal", "Flèches, pointes en bois", "Carquois", "Torches", "Couverture", "Couverture fourrée",
+  "Petite tente", "Grande tente", "Briquet à silex", "Corde, 10 mètres", "Lanterne", "Huile pour lampe", "Bandages", "Sac à dos", "Sacoche", "Cuisine de campagne", "Canne à pêche", "Collet", "Filet de pêche", "Carte"]);
 export const TARIFS = Object.entries(RAW).flatMap(([cat, rows]) => rows.map(([nom, prix, dispo, poids, page, note]) => ({
   id: `${cat}:${nom}`, cat, nom, prix, dispo, poids, page, note: note ?? "",
   etabs: ETAB_PAR_NOM[nom] ?? ETAB_PAR_CAT[cat] ?? ["marche"],
   objet: !["auberge", "services", "batiments"].includes(cat), // devient un objet sur la fiche
   itemType: ITEM_TYPE[cat] ?? "gear", weight: SYS_WEIGHT[poids] ?? "regular",
-  enBoutique: cat !== "batiments"
+  enBoutique: cat !== "batiments", ressource: RESSOURCES[nom] ?? null, voyage: VOYAGE.has(nom)
 })));
 
 export const DISPO = { C: "Courant", I: "Inhabituel", R: "Rare", "": "Non précisé" };

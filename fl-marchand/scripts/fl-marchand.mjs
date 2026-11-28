@@ -91,6 +91,8 @@ function lirePrix(s) {
   return ok ? c : null;
 }
 const d6 = () => Math.ceil(Math.random() * 6);
+/** Petit stock d'un objet inhabituel (réglage maison, au lieu de 1d6 lots) : 1 à 3, le plus souvent 1 ou 2. */
+const petitStock = () => { const d = d6(); return d <= 3 ? 1 : d <= 5 ? 2 : 3; };
 const des = (n) => Array.from({ length: n }, d6);
 
 /* ------------------------------------------------------------------ état */
@@ -135,7 +137,7 @@ function tirerStock(lieu, cle) {
     if (!t.enBoutique) continue;
     if (t.dispo === "I" || t.dispo === "R") {
       const d = d6();
-      if (t.dispo === "I") { const ok = d >= 4; jets[t.id] = { d, ok, qte: ok ? d6() : 0, vendu: 0 }; }
+      if (t.dispo === "I") { const ok = d >= 4; jets[t.id] = { d, ok, qte: ok ? petitStock() : 0, vendu: 0 }; }
       else { const ok = d === 6; jets[t.id] = { d, ok, qte: ok ? 1 : 0, vendu: 0 }; }
     } else if (lieu.stockLimite !== false && t.objet) jets[t.id] = { courant: true, qte: base, vendu: 0 };
   }
@@ -164,8 +166,12 @@ function statut(t, lieu) {
   if (ov === "off") return { ok: false, why: "Retiré de la vente par le MJ." };
   if (ov === "on") return { ok: true, why: "Mis en vente par le MJ.", qte: null };
   if (!t.enBoutique) return { ok: false, why: "Se construit, ne s'achète pas en boutique." };
-  const ici = t.etabs.filter((x) => lieu.etabs?.[x]);
-  if (!ici.length) return { ok: false, manque: true, why: `Il faut ${t.etabs.map((x) => ETAB[x]).join(" ou ")} : il n'y en a pas ici.` };
+  const ici = t.etabs.filter((x) => etabOuvert(lieu, x));
+  if (!ici.length) {
+    const ferme = t.etabs.find((x) => lieu.etabs?.[x]);
+    if (ferme) { const m = (lieu.marchands ?? []).find((y) => y.etab === ferme); return { ok: false, manque: true, why: `${m?.nom ?? "Le marchand"} est ${absent(m)} (fl-campagne) : plus personne ne tient ${ETAB[ferme].toLowerCase()}.` }; }
+    return { ok: false, manque: true, why: `Il faut ${t.etabs.map((x) => ETAB[x]).join(" ou ")} : il n'y en a pas ici.` };
+  }
   const j = lieu.stock?.jets?.[t.id];
   if (t.dispo === "C" || !t.dispo) {
     const base = t.dispo ? "Courant : en vente en quantité raisonnable." : "Le livre ne donne pas de disponibilité : traité comme courant.";
@@ -178,7 +184,7 @@ function statut(t, lieu) {
   if (t.dispo === "I") {
     if (!j.ok) return { ok: false, why: `Inhabituel : 1d6 = ${j.d}, il fallait 4 ou plus. Rien cette semaine.` };
     const r = j.qte - (j.vendu ?? 0);
-    return r > 0 ? { ok: true, qte: r, why: `Inhabituel : 1d6 = ${j.d} (4 ou plus), ${j.qte} lot${j.qte > 1 ? "s" : ""} cette semaine${j.vendu ? `, ${r} restant${r > 1 ? "s" : ""}` : ""}.` }
+    return r > 0 ? { ok: true, qte: r, why: `Inhabituel : 1d6 = ${j.d} (4 ou plus), en vente cette semaine. Petit stock : ${j.qte} (réglage maison, 1 à 3)${j.vendu ? `, ${r} restant${r > 1 ? "s" : ""}` : ""}.` }
       : { ok: false, why: `Inhabituel : les ${j.qte} lot${j.qte > 1 ? "s" : ""} de la semaine sont vendus.` };
   }
   if (!j.ok) return { ok: false, why: `Rare : 1d6 = ${j.d}, il fallait un 6. Rien cette semaine.` };
@@ -199,9 +205,9 @@ function statutJour(nom, lieu) {
 /** Donne deux ou trois gardes du corps à un lieu (un au colporteur), sans reprendre ceux d'un autre lieu ni ceux déjà engagés. */
 function assignerGardes(e, lieu, n = null) {
   n ??= lieu.colporteur ? 1 : 2 + (d6() >= 4 ? 1 : 0);
-  const pris = new Set([...Object.values(e.lieux).filter((l) => l.id !== lieu.id).flatMap((l) => l.gardes ?? []), ...e.contrats.map((c) => c.garde).filter(Boolean)]);
+  const pris = new Set([...Object.values(e.lieux).filter((l) => l.id !== lieu.id).flatMap((l) => l.gardes ?? []), ...e.contrats.map((c) => c.garde).filter(Boolean), ...(e.morts ?? [])]);
   let libres = GARDES.filter((g) => !pris.has(g.id) && !(lieu.gardes ?? []).includes(g.id));
-  if (libres.length < n) libres = GARDES.filter((g) => !e.contrats.some((c) => c.garde === g.id) && !(lieu.gardes ?? []).includes(g.id));
+  if (libres.length < n) libres = GARDES.filter((g) => !e.contrats.some((c) => c.garde === g.id) && !(e.morts ?? []).includes(g.id) && !(lieu.gardes ?? []).includes(g.id));
   const choix = [];
   while (choix.length < n && libres.length) choix.push(libres.splice(Math.floor(Math.random() * libres.length), 1)[0].id);
   lieu.gardes = choix;
@@ -254,7 +260,7 @@ function dataGarde(g, employeur = null) {
     const t = TARIFS.find((x) => x.nom === nom); const st = statsSysteme(nom);
     return { name: nom, type: st?.type ?? t?.itemType ?? "gear", system: { ...(st?.system ?? {}), cost: t ? prixTxt(t.prix, true) : "", supply: t ? DISPO[t.dispo] ?? "" : "", weight: t?.weight ?? "regular" } };
   });
-  return { name: g.nom, type: "character", system, items, flags: { [MOD]: { garde: g.id } }, img: portraitDe(g.id), prototypeToken: { name: g.nom, texture: { src: jetonDe(g.id) } } };
+  return { name: g.nom, type: "character", system, items, flags: { [MOD]: { garde: g.id } }, img: portraitDe(g.id), prototypeToken: { name: g.nom, texture: { src: jetonDe(g.id) }, disposition: 1, actorLink: true } };
 }
 const PACK = "fl-marchand-gardes";
 /** Compendium « Gardes du corps » du monde, rempli avec les fiches manquantes. */
@@ -283,13 +289,24 @@ async function ficheGarde(g, employeur = null, ouvrir = true) {
 }
 
 /* ------------------------------------------------------------------ marchands */
+/** Un marchand lié à un PNJ de fl-campagne qui est mort, captif ou disparu ne tient plus boutique. */
+function absent(m) {
+  if (!m?.pnj || !game.modules.get("fl-campagne")?.active) return null;
+  try { const v = game.settings.get("fl-campagne", "etat")?.pnj?.[m.pnj]?.vie; return ["mort", "captif", "disparu"].includes(v) ? v : null; } catch { return null; }
+}
 function attitudeDe(m) {
   if (m?.pnj && game.modules.get("fl-campagne")?.active) {
     try { const a = game.settings.get("fl-campagne", "etat")?.pnj?.[m.pnj]?.attitude; if (a && ATT[a]) return { att: a, campagne: true }; } catch { /* */ }
   }
   return { att: ATT[m?.attitude] ? m.attitude : "neutre", campagne: false };
 }
-const marchandPour = (t, lieu) => (lieu?.marchands ?? []).find((m) => t.etabs.includes(m.etab)) ?? null;
+const marchandPour = (t, lieu) => (lieu?.marchands ?? []).find((m) => t.etabs.includes(m.etab) && !absent(m)) ?? null;
+/** Établissements ouverts : cochés, et pas tenus uniquement par des marchands absents. */
+function etabOuvert(lieu, x) {
+  if (!lieu?.etabs?.[x]) return false;
+  const ms = (lieu.marchands ?? []).filter((m) => m.etab === x);
+  return !ms.length || ms.some((m) => !absent(m));
+}
 
 /* ------------------------------------------------------------------ prix */
 /** Prix d'un objet dans un lieu, avec chaque étape expliquée. */
@@ -362,7 +379,22 @@ async function creerObjet(actor, data, qte) {
     await actor.createEmbeddedDocuments("Item", [data]);
   } else await actor.createEmbeddedDocuments("Item", Array.from({ length: qte }, () => foundry.utils.deepClone(data)));
 }
+const CRANS = [0, 6, 8, 10, 12];
+const NOMS_RES = { food: "Nourriture", water: "Eau", arrows: "Flèches", torches: "Torches" };
+/** Un lot de provisions monte le dé de Ressource d'un cran, jusqu'à d12 (Manuel p. 37). */
+async function ajouterRessource(actor, cle, lots) {
+  const avant = Number(actor.system?.consumable?.[cle]?.value) || 0;
+  let i = Math.max(0, CRANS.indexOf(avant)); const depart = i;
+  i = Math.min(4, i + lots);
+  await actor.update({ [`system.consumable.${cle}.value`]: CRANS[i] });
+  return { avant, apres: CRANS[i], perdu: lots - (i - depart) };
+}
 async function donnerObjet(actor, t, qte) {
+  if (t.ressource) {
+    if (t.nom === "Outre") { const r = await donnerObjet(actor, { ...t, ressource: null }, qte); await ajouterRessource(actor, "water", qte); return r; }
+    const r = await ajouterRessource(actor, t.ressource, qte);
+    return { cree: true, trouve: true, ressource: `${NOMS_RES[t.ressource]} : ${r.avant ? `d${r.avant}` : "rien"} → d${r.apres}${r.perdu ? ` (${r.perdu} lot${r.perdu > 1 ? "s" : ""} en trop : d12 au plus par personne)` : ""}` };
+  }
   if (!t.objet) return { cree: false };
   const idx = await indexCompendiums();
   const hit = idx.get(norm(t.nom)) ?? idx.get(norm(t.nom.replace(/\s*\(.*\)$/, "")));
@@ -374,7 +406,7 @@ async function donnerObjet(actor, t, qte) {
     data = { name: t.nom, type: st?.type ?? t.itemType, system: { ...(st?.system ?? {}), cost: prixTxt(t.prix, true), supply: DISPO[t.dispo] ?? "", weight: t.weight } };
   }
   await creerObjet(actor, data, qte);
-  return { cree: true, trouve: trouve || !!statsSysteme(t.nom) };
+  return { cree: true, trouve: trouve || !!statsSysteme(t.nom) || !["weapon", "armor"].includes(t.itemType) };
 }
 const voieOr = (actor) => actor?.items?.find((i) => i.type === "talent" && /voie de l or|path of gold/.test(norm(i.name)));
 /** Le MJ voit tous les personnages (ceux des joueurs d'abord) ; un joueur ne voit que les siens. */
@@ -382,6 +414,20 @@ const voieOr = (actor) => actor?.items?.find((i) => i.type === "talent" && /voie
 const membresGroupe = () => new Set(game.actors.filter((a) => a.type === "party").flatMap((p) => p.system?.members ?? []));
 const persos = () => { const g = membresGroupe(); return game.actors.filter((a) => a.type === "character" && !a.getFlag?.(MOD, "garde") && a.system?.subtype?.type !== "npc" && (game.user.isGM ? (g.has(a.id) || a.hasPlayerOwner) : a.isOwner))
   .sort((x, y) => x.name.localeCompare(y.name)); };
+/** Encombrement (Manuel p. 37) : Force de base × 2 ; lourd 2, normal 1, léger ½, minuscule 0 ; matières premières 1 par unité ; 100 pièces = ½. */
+const POIDS = { tiny: 0, none: 0, light: 0.5, regular: 1, heavy: 2 };
+const poidsObjet = (type, weight, qte = 1) => (type === "rawMaterial" ? qte : ["gear", "armor", "weapon"].includes(type) ? (POIDS[weight] ?? (Number(weight) || 1)) * (type === "gear" ? 1 : 1) : 0);
+function encombrement(actor) {
+  let v = 0;
+  for (const i of actor.items) {
+    const st = i.flags?.["forbidden-lands"]?.state ?? i.flags?.state;
+    if (st && !["carried", "equipped"].includes(st)) continue;
+    v += poidsObjet(i.type, i.system?.weight, Number(i.system?.quantity) || 1);
+  }
+  for (const c of Object.values(actor.system?.consumable ?? {})) if (Number(c?.value) > 0) v += 1;
+  const b = bourse(actor); v += Math.floor((b.o + b.a + b.c) / 100) * 0.5;
+  return { v, max: (Number(actor.system?.attribute?.strength?.max) || 0) * 2 };
+}
 const vol = (actor) => Number(actor?.system?.bio?.willpower?.value) || 0;
 const MATIERES = TARIFS.filter((t) => t.cat === "matieres");
 const matiereDe = (item) => item.type === "rawMaterial" || MATIERES.some((t) => norm(t.nom) === norm(item.name)) ? MATIERES.find((t) => norm(t.nom) === norm(item.name) || norm(item.name).startsWith(norm(t.nom))) : null;
@@ -405,7 +451,7 @@ async function appliquerAchat({ actorId, lignes, lieuId, troc = [] }, totalForce
   await majBourse(actor, b);
   if (volTot) await actor.update({ "system.bio.willpower.value": vol(actor) - volTot });
   for (const l of troc) { const it = actor.items.get(l.itemId); const q = Number(it.system.quantity) || 1; if (q > l.qte) await it.update({ "system.quantity": q - l.qte }); else await it.delete(); }
-  const sansFiche = [];
+  const sansFiche = []; const ressources = [];
   for (const l of lignes) {
     if (l.occ) {
       const o = lieu?.occasion?.find((x) => x.id === l.occ);
@@ -414,6 +460,7 @@ async function appliquerAchat({ actorId, lignes, lieuId, troc = [] }, totalForce
     }
     const t = T.get(l.tid); if (!t) continue;
     const r = await donnerObjet(actor, t, l.qte);
+    if (r.ressource) ressources.push(r.ressource);
     if (r.cree && !r.trouve) sansFiche.push(t.nom);
     const j = lieu?.stock?.jets?.[t.id];
     if (j) j.vendu = (j.vendu ?? 0) + l.qte;
@@ -424,7 +471,7 @@ async function appliquerAchat({ actorId, lignes, lieuId, troc = [] }, totalForce
   }
   noter(e, actor, "achat", `${lignes.map((l) => `${l.qte > 1 ? `${l.qte} × ` : ""}${l.nom ?? T.get(l.tid)?.nom}`).join(", ")}${troc.length ? ` (troc : ${troc.map((l) => `${l.qte} ${l.nom}`).join(", ")})` : ""}${lieu ? ` — ${lieu.nom}` : ""}`, -du);
   await saveEtat(e);
-  return { actor, du, reste: b, sansFiche };
+  return { actor, du, reste: b, sansFiche, ressources };
 }
 
 async function appliquerVente({ actorId, itemId, qte }, prixTotal) {
@@ -491,22 +538,63 @@ async function payerSalaires({ force = false } = {}) {
   if (!isActiveGM()) return;
   const e = etat(); if (!e.contrats.length) return;
   const today = Math.floor(game.time.worldTime / DAY);
-  const impayes = []; const payes = [];
-  for (const c of e.contrats) {
+  const impayes = []; const payes = []; const reactions = [];
+  for (const c of [...e.contrats]) {
     const dus = force ? Math.max(1, today - c.paye) : today - c.paye;
     if (dus <= 0) continue;
     const a = game.actors.get(c.actorId); if (!a) continue;
     const b = payer(bourse(a), c.salaire * dus);
-    if (!b) { impayes.push(`${c.nom} (${a.name})`); c.retard = (c.retard ?? 0) + dus; c.paye = force ? c.paye + dus : today; continue; }
+    if (!b) {
+      impayes.push(`${c.nom} (${a.name})`); c.retard = (c.retard ?? 0) + dus; c.paye = force ? c.paye + dus : today; c.serie = 0;
+      if (!c.jetRetard || today >= c.jetRetard) reactions.push(retardDePaiement(e, c, today));
+      continue;
+    }
     await majBourse(a, b); c.paye = force ? c.paye + dus : today;
+    if (c.retard) { c.retard = 0; delete c.jetRetard; }
+    // Fidélité (réglage maison) : +1 par semaine entière payée sans retard, jusqu'à 3.
+    if (c.garde) { c.serie = (c.serie ?? 0) + dus; while (c.serie >= 7) { c.serie -= 7; c.fidelite = Math.min(3, (c.fidelite ?? 0) + 1); } }
     payes.push(`${c.nom} : ${prixTxt(c.salaire * dus)}`);
     noter(e, a, "salaire", `${c.nom}, ${dus} jour${dus > 1 ? "s" : ""}`, -c.salaire * dus);
   }
   if (!payes.length && !impayes.length) return;
   await saveEtat(e);
-  ChatMessage.create({ whisper: gmIds(), content: `<div class="flm-chat"><h3><i class="fa-solid fa-people-carry-box"></i> Salaires des journaliers</h3>${payes.length ? `<p>${esc(payes.join(" · "))}</p>` : ""}${impayes.length ? `<p class="flm-alert">Pas assez d'argent pour payer : ${esc(impayes.join(", "))}. Retard de paiement : voir Manuel p. 162.</p>` : ""}</div>` });
+  ChatMessage.create({ whisper: gmIds(), content: `<div class="flm-chat"><h3><i class="fa-solid fa-people-carry-box"></i> Salaires</h3>${payes.length ? `<p>${esc(payes.join(" · "))}</p>` : ""}${impayes.length ? `<p class="flm-alert">Pas assez d'argent pour payer : ${esc(impayes.join(", "))}.</p>` : ""}${reactions.map((r) => `<p>${r}</p>`).join("")}</div>` });
   appMaj();
 }
+/** Retard de paiement (Manuel p. 162) : 1d6 ; la fidélité d'un garde s'ajoute au dé (réglage maison). Renvoie le compte rendu. */
+const RETARD = {
+  1: ["quitte son poste et raconte votre mesquinerie à qui veut l'entendre.", "part"],
+  2: ["vole un objet de valeur (au choix du MJ) avant de partir.", "part"],
+  3: ["s'insurge et entraîne les autres journaliers du même employeur : tous partent.", "tous"],
+  4: ["reste mais bâcle son travail jusqu'à être payé. Nouveau jet dans une semaine s'il ne l'est pas.", "reste"],
+  5: ["continue mais se plaint de votre avarice partout. Nouveau jet dans une semaine s'il n'est pas payé.", "reste"],
+  6: ["continue sérieusement sans se plaindre. Nouveau jet dans une semaine s'il n'est pas payé.", "reste"]
+};
+function retardDePaiement(e, c, today) {
+  const d = d6(); const bonus = c.garde ? (c.fidelite ?? 0) : 0; const r = Math.min(6, d + bonus);
+  const [txt, effet] = RETARD[r];
+  if (effet === "reste") c.jetRetard = today + 7;
+  else {
+    const partants = effet === "tous" ? e.contrats.filter((x) => x.actorId === c.actorId) : [c];
+    e.contrats = e.contrats.filter((x) => !partants.includes(x));
+    for (const x of partants) if (x.garde && e.lieux[x.lieuId]) (e.lieux[x.lieuId].gardes ??= []).push(x.garde);
+  }
+  return `<b>${esc(c.nom)}</b> n'est pas payé : 1d6 = ${d}${bonus ? ` +${bonus} (fidélité)` : ""} → ${esc(txt)} <span class="flm-hint">(Manuel p. 162)</span>`;
+}
+const FIDELITE = ["Nouveau", "Fiable", "Fidèle", "Dévoué"];
+
+/** Un garde meurt : son contrat s'arrête et il ne sera plus proposé. */
+async function gardeMort(gid, raison = "") {
+  if (!isActiveGM()) return;
+  const e = etat(); const c = e.contrats.find((x) => x.garde === gid);
+  e.contrats = e.contrats.filter((x) => x.garde !== gid);
+  e.morts = [...new Set([...(e.morts ?? []), gid])];
+  for (const l of Object.values(e.lieux)) l.gardes = (l.gardes ?? []).filter((x) => x !== gid);
+  await saveEtat(e);
+  if (c) ChatMessage.create({ whisper: gmIds(), content: `<div class="flm-chat"><h3><i class="fa-solid fa-skull"></i> ${esc(c.nom)}</h3><p>${esc(raison || "Mort.")} Son contrat avec ${esc(c.employeur)} prend fin.</p></div>` });
+  appMaj();
+}
+
 /** Commandes arrivées à terme : le MJ est prévenu, le joueur aussi. */
 async function verifierCommandes() {
   if (!isActiveGM()) return;
@@ -564,7 +652,7 @@ async function traiterDemande(msg, ok) {
       const res = await demanderPrix("Accepter l'achat", `<p>${resume(f.data.lignes)}</p><p>À payer en pièces : <b>${prixTxt(Math.max(0, brut), true)}</b>. Vous pouvez changer ce prix (marchandage).</p>`, Math.max(0, brut), "Encaisser");
       if (res == null) return;
       const r = await appliquerAchat(f.data, res);
-      await clore(msg, `<i class="fa-solid fa-check"></i> Payé ${prixTxt(r.du, true)}. Il reste à ${esc(r.actor.name)} : ${prixTxt(total(r.reste), true)}.${r.sansFiche.length ? `<br><span class="flm-hint">Créé sans caractéristiques (absent des compendiums) : ${esc(r.sansFiche.join(", "))}.</span>` : ""}`);
+      await clore(msg, `<i class="fa-solid fa-check"></i> Payé ${prixTxt(r.du, true)}. Il reste à ${esc(r.actor.name)} : ${prixTxt(total(r.reste), true)}.${r.ressources.length ? `<br>${esc(r.ressources.join(" · "))}` : ""}${r.sansFiche.length ? `<br><span class="flm-hint">Créé sans caractéristiques (absent des compendiums) : ${esc(r.sansFiche.join(", "))}.</span>` : ""}`);
     } else if (f.type === "vente") {
       let val = f.data.prix; let info = "";
       const item = game.actors.get(f.data.actorId)?.items.get(f.data.itemId);
@@ -589,7 +677,7 @@ async function traiterDemande(msg, ok) {
 }
 
 /* ------------------------------------------------------------------ rendu sans clignotement (repris de fl-campagne) */
-const MORPH_KEYS = ["data-k", "data-tab", "data-path", "data-lieu", "data-tid"];
+const MORPH_KEYS = ["data-k", "data-groupe", "data-tab", "data-path", "data-lieu", "data-tid"];
 function morphKey(n) {
   if (n.nodeType !== 1) return null;
   for (const a of MORPH_KEYS) { const v = n.getAttribute(a); if (v != null) return `${n.tagName}|${a}|${v}`; }
@@ -635,8 +723,20 @@ function replay(el, cls) {
 }
 
 /* ------------------------------------------------------------------ fenêtre */
-const TABS_MJ = [["boutique", "Boutique"], ["tarifs", "Tous les prix"], ["lieux", "Lieux"], ["auberge", "Auberge"], ["vendre", "Vendre"], ["commandes", "Commandes"], ["milice", "Milice"], ["journaliers", "Journaliers"], ["carnet", "Carnet"], ["explications", "Aide"]];
-const TABS_PJ = [["boutique", "Boutique"], ["tarifs", "Tous les prix"], ["vendre", "Vendre"], ["commandes", "Commandes"], ["milice", "Milice"], ["journaliers", "Journaliers"], ["carnet", "Carnet"], ["explications", "Aide"]];
+/** Six rubriques pour le MJ, cinq pour les joueurs ; chacune a ses pages. */
+const GROUPES_MJ = [
+  ["marche", "Au marché", [["boutique", "Boutique"], ["vendre", "Vendre"], ["auberge", "Auberge"]]],
+  ["prix", "Prix", [["tarifs", "Tous les prix"]]],
+  ["engager", "Engager", [["milice", "Gardes du corps"], ["journaliers", "Journaliers"]]],
+  ["lieux", "Lieux", [["lieux", "Lieux"]]],
+  ["suivi", "Suivi", [["commandes", "Commandes"], ["carnet", "Carnet"]]],
+  ["aide", "Aide", [["essentiel", "L'essentiel"], ["explications", "Les règles"]]]];
+const GROUPES_PJ = [
+  ["marche", "Au marché", [["boutique", "Boutique"], ["vendre", "Vendre"]]],
+  ["prix", "Prix", [["tarifs", "Tous les prix"]]],
+  ["engager", "Engager", [["milice", "Gardes du corps"], ["journaliers", "Journaliers"]]],
+  ["suivi", "Mes affaires", [["commandes", "Commandes"], ["carnet", "Carnet"]]],
+  ["aide", "Aide", [["essentiel", "L'essentiel"], ["explications", "Les règles"]]]];
 
 class MarchandApp extends foundry.applications.api.ApplicationV2 {
   static DEFAULT_OPTIONS = {
@@ -661,13 +761,15 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
 
   async _renderHTML() {
     if (game.user.isGM) await majStocks();
-    const tabs = game.user.isGM ? TABS_MJ : TABS_PJ;
-    if (!tabs.some(([id]) => id === this.tab)) this.tab = "boutique";
-    const nav = tabs.map(([id, label]) => `<a class="flm-tab${this.tab === id ? " active" : ""}" data-tab="${id}"><span>${label}</span></a>`).join("");
+    const groupes = game.user.isGM ? GROUPES_MJ : GROUPES_PJ;
+    let g = groupes.find(([, , p]) => p.some(([id]) => id === this.tab));
+    if (!g) { g = groupes[0]; this.tab = g[2][0][0]; }
+    const nav = groupes.map(([gid, label, pages]) => `<a class="flm-tab${g[0] === gid ? " active" : ""}" data-tab="${pages[0][0]}" data-groupe="${gid}"><span>${label}</span></a>`).join("");
+    const sous = g[2].length > 1 ? `<nav class="flm-sub-nav">${g[2].map(([id, label]) => `<a class="${this.tab === id ? "active" : ""}" data-tab="${id}">${label}</a>`).join("")}</nav>` : "";
     const sem = semaine();
     const body = { boutique: () => this.#boutique(), tarifs: () => this.#tarifs(), lieux: () => this.#lieux(), auberge: () => this.#auberge(), vendre: () => this.#vendre(),
-      commandes: () => this.#commandes(), milice: () => this.#milice(), journaliers: () => this.#journaliers(), carnet: () => this.#carnet(), explications: () => this.#explications() }[this.tab]();
-    return `<nav class="flm-nav">${nav}<span class="flm-week" title="La disponibilité est tirée chaque semaine (Manuel p. 179)."><i class="fa-regular fa-calendar"></i> ${esc(sem.label)}</span></nav><section class="flm-body">${body}</section>`;
+      commandes: () => this.#commandes(), milice: () => this.#milice(), journaliers: () => this.#journaliers(), carnet: () => this.#carnet(), explications: () => this.#explications(), essentiel: () => this.#essentiel() }[this.tab]();
+    return `<nav class="flm-nav">${nav}<span class="flm-week" title="La disponibilité est tirée chaque semaine (Manuel p. 179)."><i class="fa-regular fa-calendar"></i> ${esc(sem.label)}</span></nav>${sous}<section class="flm-body">${body}</section>`;
   }
   _replaceHTML(html, content) {
     const changed = this._lastTab !== this.tab;
@@ -694,11 +796,11 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
   /* ---------------- morceaux communs */
   #chercher(liste) {
     const q = norm(this.q);
-    return liste.filter((t) => (!this.cat || t.cat === this.cat) && (!q || norm(t.nom).includes(q) || norm(t.note).includes(q)));
+    return liste.filter((t) => (!this.cat || (this.cat === "voyage" ? t.voyage : t.cat === this.cat)) && (!q || norm(t.nom).includes(q) || norm(t.note).includes(q)));
   }
   #cats(liste, tresors = false) {
     const n = (id) => liste.filter((t) => t.cat === id).length;
-    return `<div class="flm-cats"><a class="${!this.cat ? "active" : ""}" data-cat="">Tout</a>${CATEGORIES.filter(([id]) => n(id)).map(([id, label, icon]) =>
+    return `<div class="flm-cats"><a class="${!this.cat ? "active" : ""}" data-cat="">Tout</a><a class="flm-voyage${this.cat === "voyage" ? " active" : ""}" data-cat="voyage"><i class="fa-solid fa-person-hiking"></i> Pour le voyage</a>${CATEGORIES.filter(([id]) => n(id)).map(([id, label, icon]) =>
       `<a class="${this.cat === id ? "active" : ""}" data-cat="${id}"><i class="${icon}"></i> ${label}</a>`).join("")}${tresors ? `<a class="${this.cat === "tresors" ? "active" : ""}" data-cat="tresors"><i class="fa-solid fa-gem"></i> Trouvailles</a>` : ""}</div>
       <input type="search" class="flm-find" placeholder="Chercher…" value="${esc(this.q)}" data-q>`;
   }
@@ -791,10 +893,16 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
         <td class="flm-price">${prixTxt(l.pu * l.qte)}</td><td><a data-cart-del="${i}" title="Retirer"><i class="fa-solid fa-xmark"></i></a></td></tr>`).join("")}</table>
         ${trocHtml}
         <p class="flm-total">À payer : ${prixTxt(du, true)}</p>
+        ${(() => { if (!acheteur) return ""; const enc = encombrement(acheteur); if (!enc.max) return "";
+          const ajout = lignes.reduce((s2, l) => { if (l.occ) { const o = (lieu.occasion ?? []).find((x) => x.id === l.occ); return s2 + poidsObjet(o?.data?.type, o?.data?.system?.weight, 1) * l.qte; }
+            const t = T.get(l.tid); return s2 + (t.objet ? poidsObjet(t.itemType === "rawMaterial" ? "rawMaterial" : "gear", t.weight, 1) * l.qte : 0); }, 0);
+          const apres = enc.v + ajout;
+          return ajout ? `<p class="${apres > enc.max ? "flm-alert" : "flm-hint"}">Encombrement après l'achat : ${apres} / ${enc.max}${apres > enc.max ? " — surchargé : jet d'Endurance pour courir ou marcher un Quart (Manuel p. 37)" : ""}</p>` : ""; })()}
         ${a < du ? `<p class="flm-alert">Pas assez d'argent.</p>` : ""}
         <button type="button" data-act="acheter" ${!acheteur || a < du ? "disabled" : ""}><i class="fa-solid fa-coins"></i> ${game.user.isGM ? "Encaisser" : "Demander au MJ"}</button>`
       : `<p class="flm-hint">Cliquez sur <i class="fa-solid fa-plus"></i> pour ajouter un objet.</p>`}</div>`;
-    const marchands = (lieu.marchands ?? []).map((m) => { const { att } = attitudeDe(m); return `<span class="flm-mchd"><b>${esc(m.nom)}</b> · ${esc(ETAB[m.etab] ?? "")} · <span class="flm-att ${att}">${ATT[att][0]}</span></span>`; }).join("");
+    const marchands = (lieu.marchands ?? []).map((m) => { const { att } = attitudeDe(m); const ab = absent(m);
+      return `<span class="flm-mchd${ab ? " flm-off" : ""}"><b>${esc(m.nom)}</b> · ${esc(ETAB[m.etab] ?? "")} · ${ab ? `<span class="flm-alert">${ab}</span>` : `<span class="flm-att ${att}">${ATT[att][0]}</span>`}</span>`; }).join("");
     const bourseM = lieu.bourseIllimitee ? "" : ` · le marchand a ${prixTxt(lieu.bourse ?? 0, true)} en caisse`;
     return `<div class="flm-split"><div class="flm-scroll">
       <div class="flm-head"><h2>${esc(lieu.nom)}</h2>${ouvrir}
@@ -964,10 +1072,10 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       return `<div class="flm-card flm-garde flm-engage" data-k="mil:${c.id}">${portraitDe(c.garde) ? `<img class="flm-portrait" src="${esc(portraitDe(c.garde))}" alt="">` : ""}
         <h3>${esc(c.nom)}</h3><p class="flm-sub">${esc(g?.peuple ?? "")} · au service de <b>${esc(c.employeur)}</b> depuis ${today - c.depuis + 1} jour(s)</p>
         <p class="flm-quote">${esc(g?.replique ?? "")}</p>
-        <p>${prixTxt(c.salaire)} par jour${c.retard ? ` · <span class="flm-alert">${c.retard} jour(s) impayé(s)</span>` : ""}${today - c.paye > 0 ? ` · ${today - c.paye} jour(s) dû(s)` : ""}</p>
-        <div class="flm-buttons">${gm ? `<button type="button" data-fiche-garde="${c.garde}"><i class="fa-solid fa-id-card"></i> ${a ? "Ouvrir sa fiche" : "Créer sa fiche"}</button><button type="button" data-renvoyer="${c.id}"><i class="fa-solid fa-user-xmark"></i> Renvoyer</button>` : ""}</div></div>`; };
+        <p>${prixTxt(c.salaire)} par jour · fidélité : <b>${FIDELITE[c.fidelite ?? 0]}</b> <span class="flm-src">maison</span>${c.retard ? ` · <span class="flm-alert">${c.retard} jour(s) impayé(s)</span>` : ""}${today - c.paye > 0 ? ` · ${today - c.paye} jour(s) dû(s)` : ""}</p>
+        <div class="flm-buttons">${gm ? `<button type="button" data-fiche-garde="${c.garde}"><i class="fa-solid fa-id-card"></i> ${a ? "Ouvrir sa fiche" : "Créer sa fiche"}</button><button type="button" data-renvoyer="${c.id}"><i class="fa-solid fa-user-xmark"></i> Renvoyer</button><button type="button" data-mort="${c.garde}"><i class="fa-solid fa-skull"></i> Mort</button>` : ""}</div></div>`; };
     return `<div class="flm-scroll"><div class="flm-head"><h2>La milice</h2>
-      <p class="flm-sub">Les gardes du corps : des PNJ à part, qui ne font pas partie du groupe. Chacun est payé chaque jour par celui qui l'a engagé.</p>
+      <p class="flm-sub">Les gardes du corps : des PNJ à part, qui ne font pas partie du groupe. Chacun est payé chaque jour par celui qui l'a engagé. Impayé, il réagit selon la table du retard de paiement (Manuel p. 162). Chaque semaine payée sans retard le rend plus fidèle, et sa fidélité s'ajoute à ce dé (réglage maison).</p>
       <p class="flm-center">Employeur : ${this.#persoSelect("acheteur", this.acheteur, liste)}</p></div>
       <h3 class="flm-center">À votre service</h3>
       ${engages.length ? `<div class="flm-gardes">${engages.map(carteEngage).join("")}</div>` : `<p class="flm-hint flm-center">Personne pour le moment.</p>`}
@@ -1011,6 +1119,27 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       ${gm && e.carnet.length ? `<p class="flm-right"><a class="flm-danger" data-act="carnet-vider"><i class="fa-solid fa-broom"></i> Vider le carnet</a></p>` : ""}</div>`;
   }
 
+  /* ---------------- l'essentiel */
+  #essentiel() {
+    const gm = game.user.isGM;
+    const etapes = gm ? [
+      ["fa-solid fa-map-location-dot", "Préparez vos lieux", "Rubrique Lieux : « Lieux de la campagne » crée les villages et châteaux avec leurs marchands. Cochez ce qu'on trouve dans chacun. Ce qui n'est pas coché ne se vend pas."],
+      ["fa-solid fa-store", "Ouvrez l'échoppe", "Quand les PJ arrivent quelque part, choisissez le lieu en haut de la Boutique (ou « Ouvrir aux joueurs » dans Lieux). Les joueurs le voient chez eux avec Alt+M."],
+      ["fa-solid fa-comments-dollar", "Validez les demandes", "Les achats, ventes, commandes et embauches des joueurs arrivent dans le tchat. Changez le prix si on marchande, puis « Accepter » : argent, objets et stock se mettent à jour tout seuls."],
+      ["fa-solid fa-bed", "Le soir, l'auberge", "Au marché › Auberge : choisissez couchage, repas et boisson, cochez le groupe, « Faire payer et dormir »."],
+      ["fa-solid fa-shield-halved", "Les gardes du corps", "Engager › Gardes du corps : deux ou trois par lieu, avec leur histoire. Une fois engagés, ils sont payés chaque jour ; s'ils ne le sont pas, le module tire leur réaction (Manuel p. 162)."]
+    ] : [
+      ["fa-solid fa-store", "La boutique", "Quand le MJ ouvre une échoppe, elle apparaît dans « Au marché ». Cliquez sur le nom d'un objet pour savoir pourquoi il coûte ce prix."],
+      ["fa-solid fa-basket-shopping", "Le panier", "Ajoutez avec +, choisissez qui paie, payez en partie en troc si vous voulez, puis « Demander au MJ »."],
+      ["fa-solid fa-hand-holding-dollar", "Vendre", "Au marché › Vendre : proposez un objet de votre fiche, le marchand fait une offre, le MJ décide."],
+      ["fa-solid fa-hammer", "Commander", "Un objet absent cette semaine ? Cliquez sur son nom puis « Commander à un artisan » : il sera prêt après son temps de fabrication."],
+      ["fa-solid fa-shield-halved", "Engager", "Des gardes du corps et des journaliers vous attendent dans « Engager ». Payez-les chaque jour, sinon gare à eux."]
+    ];
+    return `<div class="flm-scroll flm-text"><div class="flm-hero"><img class="flm-raven" src="${SYS_ART}/ravens/raven6.webp" alt=""><h1>Le Marchand</h1><p class="flm-hero-sub">en cinq étapes</p></div>
+      <ol class="flm-etapes">${etapes.map(([ic, t, txt], i) => `<li data-k="et:${i}"><i class="${ic}"></i><div><b>${t}</b><p>${txt}</p></div></li>`).join("")}</ol>
+      <p class="flm-hint flm-center">Le détail des règles et des réglages maison : Aide › Les règles.</p></div>`;
+  }
+
   /* ---------------- aide */
   #explications() {
     const R = regles(); const gm = game.user.isGM;
@@ -1022,7 +1151,8 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       <div class="flm-card"><h3>Ce que dit le livre</h3><ul>
         <li><b>Monnaie</b> : 10 pièces de cuivre valent 1 pièce d'argent, 10 pièces d'argent valent 1 pièce d'or. On frappe peu de pièces dans les Contrées Interdites et l'on troque beaucoup (Manuel p. 37).</li>
         <li><b>Prix</b> : ceux des tableaux sont des prix moyens. Ils peuvent beaucoup changer d'un village à l'autre et selon la disponibilité (Manuel p. 104 et 180).</li>
-        <li><b>Courant</b> : en vente en quantité raisonnable dans un village typique. <b>Inhabituel</b> : 1d6 chaque semaine ; sur 4 ou plus, 1d6 lots. <b>Rare</b> : 1d6 chaque semaine ; sur un 6, un seul exemplaire (Manuel p. 179).</li>
+        <li><b>Provisions</b> : un lot de rations, d'eau, de flèches ou de torches acheté monte le dé de Ressource d'un cran, jusqu'à d12 (Manuel p. 37). Une outre contient un lot d'eau.</li>
+        <li><b>Courant</b> : en vente en quantité raisonnable dans un village typique. <b>Inhabituel</b> : 1d6 chaque semaine ; sur 4 ou plus, il y en a (le livre dit 1d6 lots ; le module en met 1 à 3, voir réglages maison). <b>Rare</b> : 1d6 chaque semaine ; sur un 6, un seul exemplaire (Manuel p. 179).</li>
         <li><b>Fabrication</b> : chaque objet a ses matières premières, son temps (deux Quarts de travail par jour), son talent et ses outils (Manuel p. 179-193).</li>
         <li><b>Voie de l'or</b> (talent) : chaque point de Volonté dépensé baisse le prix d'un objet de 20 %, jusqu'à 4 points (Manuel p. 66).</li>
         <li><b>Établissements</b> : le Guide du MJ (p. 170) tire ceux d'un village : auberge, moulin, forgeron, scierie, comptoir, temple, milice, taverne, écurie… ou rien.</li>
@@ -1035,6 +1165,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
         <li><label>${chk("attitude")} L'attitude du marchand change ses prix</label> : allié −20 %, amical −10 %, méfiant +10 %, hostile +25 %, ennemi +50 %.</li>
         <li>Offre du marchand pour un objet : ${num("revente")} du prix du livre ; pour une trouvaille : ${num("tresor")} de sa valeur. Il revend ensuite l'objet d'occasion.</li>
         <li>Valeur du troc : ${num("troc")} du prix du livre des matières premières.</li>
+        <li><b>Petit stock des objets inhabituels</b> : 1 à 3 (1d6 : 1-3 donne 1, 4-5 donne 2, 6 donne 3) au lieu des 1d6 lots du livre. Le prix de l'eau (1 c le lot) est aussi maison.</li>
         <li><b>Stock des objets courants</b> et <b>caisse du marchand</b> selon la taille du lieu (avant-poste 1 de chaque et 1 o, hameau 3 et 3 o, village 6 et 10 o, château 6 et 20 o, ville 12 et 50 o, colporteur 2 et 5 o), renouvelés chaque semaine.</li>
         <li>Les <b>raisons propres à chaque lieu</b> (isolé, pénurie, abondance…), réglées dans l'onglet Lieux.</li>
         <li><b>Commandes</b> : on paie d'avance le prix d'ici ; le forgeron fait ce qui demande une forge, un artisan du marché le reste. Plusieurs objets prennent plusieurs fois le temps.</li>
@@ -1049,7 +1180,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
 
   /* ---------------- actions */
   async #click(ev) {
-    const t = ev.target.closest("[data-ovr],[data-tab],[data-cat],[data-why],[data-add],[data-add-occ],[data-cart-del],[data-act],[data-lieu],[data-fact-del],[data-mch-del],[data-vendre],[data-commander],[data-remettre],[data-annuler],[data-engager],[data-renvoyer],[data-garde],[data-fiche-garde],[data-prompt-garde]");
+    const t = ev.target.closest("[data-ovr],[data-tab],[data-cat],[data-why],[data-add],[data-add-occ],[data-cart-del],[data-act],[data-lieu],[data-fact-del],[data-mch-del],[data-vendre],[data-commander],[data-remettre],[data-annuler],[data-engager],[data-renvoyer],[data-garde],[data-fiche-garde],[data-prompt-garde],[data-mort]");
     if (!t || t.disabled) return;
     const d = t.dataset;
     if (d.ovr != null) {
@@ -1058,6 +1189,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       await saveEtat(e); return this.render();
     }
     if (d.tab === "milice" && game.user.isGM) chercherPortraits().then(appMaj);
+    if (d.groupe) { const gr = (game.user.isGM ? GROUPES_MJ : GROUPES_PJ).find(([id]) => id === d.groupe); if (gr?.[2].some(([id]) => id === this.tab)) return; }
     if (d.tab) { this.tab = d.tab; if (d.lieuVoir) this.lieuVu = d.lieuVoir; return this.render(); }
     if (d.cat != null) { this.cat = d.cat; return this.render(); }
     if (d.why) { this.ouverts.has(d.why) ? this.ouverts.delete(d.why) : this.ouverts.add(d.why); return this.render(); }
@@ -1089,6 +1221,11 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
       await saveEtat(e); return this.render();
     }
     if (d.garde) return this.#engagerGarde(d.garde);
+    if (d.mort) {
+      const g = GARDE[d.mort];
+      if (!(await DV().confirm({ window: { title: "Mort d'un garde" }, content: `<p>${esc(g?.nom)} est mort ? Son contrat prend fin et il ne sera plus proposé.</p>` }))) return;
+      await gardeMort(d.mort, "Tombé au service du groupe."); return this.render();
+    }
     if (d.ficheGarde) { await ficheGarde(GARDE[d.ficheGarde]); return; }
     if (d.promptGarde) {
       const txt = promptImage(GARDE[d.promptGarde]);
@@ -1233,7 +1370,7 @@ class MarchandApp extends foundry.applications.api.ApplicationV2 {
     if (game.user.isGM) {
       try {
         const r = await appliquerAchat(data);
-        ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-coins"></i> ${esc(actor.name)} achète</h3><p>${resume(lignes)}</p>${troc.length ? `<p>Troc : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>Payé : <b>${prixTxt(r.du, true)}</b> ${esc(aLieu(lieu.nom))}.</p>${r.sansFiche.length ? `<p class="flm-hint">Créé sans caractéristiques : ${esc(r.sansFiche.join(", "))}.</p>` : ""}</div>`, speaker: ChatMessage.getSpeaker({ actor }) });
+        ChatMessage.create({ content: `<div class="flm-chat"><h3><i class="fa-solid fa-coins"></i> ${esc(actor.name)} achète</h3><p>${resume(lignes)}</p>${troc.length ? `<p>Troc : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>Payé : <b>${prixTxt(r.du, true)}</b> ${esc(aLieu(lieu.nom))}.</p>${r.ressources.length ? `<p>${esc(r.ressources.join(" · "))}</p>` : ""}${r.sansFiche.length ? `<p class="flm-hint">Créé sans caractéristiques : ${esc(r.sansFiche.join(", "))}.</p>` : ""}</div>`, speaker: ChatMessage.getSpeaker({ actor }) });
       } catch (err) { return ui.notifications.warn(err.message); }
     } else {
       await demander("achat", data, `<p><b>${esc(actor.name)}</b> ${esc(aLieu(lieu.nom))} :</p><p>${resume(lignes)}</p>${troc.length ? `<p>Troc proposé : ${esc(troc.map((l) => `${l.qte} ${l.nom}`).join(", "))} (${prixTxt(valTroc)})</p>` : ""}<p>À payer : <b>${prixTxt(Math.max(0, brut - valTroc), true)}</b></p>`);
@@ -1391,6 +1528,12 @@ Hooks.on("getSceneControlButtons", (controls) => {
 Hooks.on("updateWorldTime", () => {
   clearTimeout(globalThis.__flmT);
   globalThis.__flmT = setTimeout(async () => { const c = await majStocks(); await verifierCommandes(); await payerSalaires(); if (c) appMaj(); }, 800);
+});
+
+// La fiche d'un garde engagé est supprimée : son contrat s'arrête.
+Hooks.on("deleteActor", (actor) => {
+  const gid = actor.getFlag?.(MOD, "garde");
+  if (gid && etat().contrats.some((c) => c.garde === gid)) gardeMort(gid, "Sa fiche a été supprimée.");
 });
 
 // Boutons des messages du Marchand
