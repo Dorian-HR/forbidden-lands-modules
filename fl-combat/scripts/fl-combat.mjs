@@ -163,8 +163,17 @@ Hooks.on("preCreateChatMessage", (msg, data) => {
   // l'auteur du jet : l'orateur du message, ou l'acteur noté dans le jet par le système
   let id = data.speaker?.actor ?? msg.speaker?.actor;
   if (!pending.has(id)) id = msg.rolls[0]?.options?.actorId ?? id;
-  const p = pending.get(id);
-  if (!p) return;
+  let p = pending.get(id);
+  if (!p) {
+    // Jet poussé : le système crée un nouveau message et supprime l'ancien. On reprend le lien de l'ancien.
+    const r = msg.rolls[0];
+    const pousse = !!(r?.pushed || r?.pushCount > 0 || r?.options?.pushed || (r?.dice ?? []).some((d) => (d.results ?? []).some((x) => x.active === false)));
+    if (!pousse) return;
+    const avant = game.messages.contents.filter((m) => m.flags?.[MOD]?.fight && m.flags[MOD].role && m.speaker?.actor === id && Date.now() - (m.timestamp ?? 0) < 10 * 60 * 1000).at(-1);
+    if (!avant) return;
+    msg.updateSource({ [`flags.${MOD}`]: { fight: avant.flags[MOD].fight, role: avant.flags[MOD].role } });
+    return;
+  }
   pending.delete(id);
   if (Date.now() > p.until) return;
   msg.updateSource({ [`flags.${MOD}`]: { fight: p.fight, role: p.role } });
@@ -176,7 +185,7 @@ function refreshCard(fight) {
   if (ui.chat?.updateMessage) ui.chat.updateMessage(card);
   else ui.chat?.render?.();
 }
-for (const h of ["createChatMessage", "updateChatMessage"]) Hooks.on(h, (msg) => {
+for (const h of ["createChatMessage", "updateChatMessage", "deleteChatMessage"]) Hooks.on(h, (msg) => {
   const f = msg.getFlag?.(MOD, "fight");
   if (f) refreshCard(f);
 });
@@ -487,7 +496,7 @@ function related(fight) {
   const by = {};
   for (const m of game.messages.contents) {
     const f = m.flags?.[MOD];
-    if (f?.fight === fight && f.role) by[f.role] = m; // le dernier l'emporte (jet poussé = même message mis à jour)
+    if (f?.fight === fight && f.role) by[f.role] = m; // le dernier l'emporte (un jet poussé crée un nouveau message)
   }
   return by;
 }
@@ -550,7 +559,10 @@ async function renderAttackCard(msg, f) {
   const applied = f.applied;
   if (s.net > 0 && s.physical && s.Ar === null && canTarget && !applied)
     btn.push(`<button type="button" data-flc="armor">Jet d'armure de ${esc(f.target.name)}</button>`);
-  if (s.net > 0 && game.user.isGM && !applied) {
+  const attenteDefense = s.defending && s.D === null && s.A !== null && s.A > 0;
+  if (attenteDefense && game.user.isGM && !applied)
+    btn.push(`<p class="flc-hint">Les dégâts se calculeront quand la défense sera lancée.</p><button type="button" data-flc="nodef">La défense n'arrive pas : compter sans défense</button>`);
+  if (s.net > 0 && game.user.isGM && !applied && !attenteDefense) {
     const v = s.final ?? s.dmg;
     btn.push(`<div class="flc-apply"><input type="number" min="0" value="${v}" data-flc-amount> <button type="button" data-flc="apply" data-attr="${attr}">Appliquer les dégâts (${ATTR_LABEL[attr]})</button></div>`);
     if (s.physical && s.Ar === null) btn.push(`<p class="flc-hint">Vous pouvez appliquer sans jet d'armure (cible sans armure, attaque qui l'ignore…).</p>`);
@@ -619,6 +631,7 @@ async function onCardClick(ev, msg) {
       break;
     }
     case "apply": return applyDelta(msg, f, tgt, b.dataset.attr, -amount);
+    case "nodef": if (game.user.isGM) await msg.update({ [`flags.${MOD}.defense`]: { choice: "none", reason: "défense non reçue" } }); return;
     case "heal": return applyDelta(msg, f, tgt, b.closest(".flc-card").querySelector("[data-flc-attr]").value, +amount);
     case "hurt": return applyDelta(msg, f, tgt, b.closest(".flc-card").querySelector("[data-flc-attr]").value, -amount);
     case "wear": {
